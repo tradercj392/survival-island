@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Survival Island</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sand:#f4d9a6; --sea:#1f9fb4;
+    --coral:#ff7a4d; --coral-deep:#e85d31;
+    --palm:#2f8f5b; --palm-deep:#1f6e42;
+    --ink:#2a2118; --paper:#fff7e8; --paper-edge:#e9d2a4;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; overflow:hidden; background:#bfe9f2; font-family:'Nunito',system-ui,sans-serif; color:var(--ink); }
+  #scene{ position:fixed; inset:0; display:block; touch-action:none; }
+
+  #hud{ position:fixed; inset:0; pointer-events:none; z-index:5; }
+  .title-badge{ position:absolute; top:16px; left:16px; background:rgba(255,247,232,.92); border:3px solid var(--ink); border-radius:16px; padding:8px 16px; box-shadow:4px 4px 0 rgba(42,33,24,.25); transform:rotate(-2deg); }
+  .title-badge h1{ font-family:'Fredoka',sans-serif; font-weight:700; font-size:clamp(18px,4.5vw,28px); letter-spacing:.5px; }
+  .title-badge span{ font-size:11px; font-weight:800; letter-spacing:2px; text-transform:uppercase; color:var(--coral-deep); }
+
+  #resources{ position:absolute; top:16px; right:16px; background:rgba(255,247,232,.92); border:3px solid var(--ink); border-radius:14px; padding:8px 14px; box-shadow:4px 4px 0 rgba(42,33,24,.25); transform:rotate(2deg); font-family:'Fredoka',sans-serif; font-weight:700; font-size:clamp(13px,3.4vw,19px); white-space:nowrap; }
+  #resources.bump{ animation:bump .35s ease; }
+  @keyframes bump{ 0%{transform:rotate(2deg) scale(1)} 40%{transform:rotate(2deg) scale(1.18)} 100%{transform:rotate(2deg) scale(1)} }
+  #goals{ position:absolute; top:84px; left:50%; transform:translateX(-50%); display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:96vw; }
+  .goal{ background:rgba(255,247,232,.92); border:2px solid var(--ink); border-radius:999px; padding:4px 10px; font-family:'Fredoka',sans-serif; font-weight:700; font-size:13px; box-shadow:2px 2px 0 rgba(42,33,24,.2); transition:background .3s,color .3s; }
+  .goal i{ font-style:normal; opacity:.85; }
+  .goal.done{ background:var(--palm); color:#fff; border-color:var(--palm-deep); }
+  #craft-backdrop{ position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(20,40,55,.55); backdrop-filter:blur(3px); }
+  #craft-backdrop.open{ display:flex; }
+  .craft-card{ width:min(440px,94vw); max-height:86vh; overflow-y:auto; background:var(--paper); border:4px solid var(--ink); border-radius:20px; box-shadow:10px 12px 0 rgba(42,33,24,.3); padding:24px; animation:pop .35s cubic-bezier(.2,1.3,.4,1); }
+  .craft-card .eyebrow{ font-family:'Fredoka',sans-serif; color:#b07a3a; font-weight:700; letter-spacing:1px; text-transform:uppercase; font-size:13px; }
+  .craft-card h2{ font-family:'Fredoka',sans-serif; font-size:24px; margin:2px 0 4px; }
+  .craft-sub{ font-size:14px; margin-bottom:14px; }
+  .craft-row{ display:flex; align-items:center; gap:10px; padding:10px; border:2px solid var(--paper-edge); border-radius:12px; margin-bottom:8px; background:rgba(244,217,166,.35); }
+  .craft-row.built{ opacity:.65; }
+  .craft-row .ci{ font-size:26px; }
+  .craft-row .cn{ flex:1; font-family:'Fredoka',sans-serif; font-weight:700; font-size:15px; display:flex; flex-direction:column; line-height:1.2; }
+  .craft-row .cn i{ font-style:normal; font-weight:600; font-size:12px; opacity:.7; font-family:'Nunito',sans-serif; }
+  .craft-row .cc{ font-family:'Fredoka',sans-serif; font-weight:700; font-size:14px; white-space:nowrap; }
+  .craft-btn{ font-family:'Fredoka',sans-serif; font-weight:700; font-size:14px; color:#fff; background:var(--coral); border:2px solid var(--ink); border-radius:10px; padding:8px 12px; cursor:pointer; box-shadow:0 3px 0 var(--coral-deep); }
+  .craft-btn:disabled{ background:#bdb6a8; box-shadow:0 3px 0 #9a9486; cursor:default; }
+  #journal-btn{ position:absolute; bottom:20px; left:86px; pointer-events:auto; width:54px; height:54px; border-radius:50%; border:3px solid var(--ink); background:rgba(255,247,232,.95); box-shadow:3px 3px 0 rgba(42,33,24,.25); font-size:26px; cursor:pointer; }
+  #journal-btn:active{ transform:translateY(2px); }
+  #guide-btn{ position:absolute; bottom:20px; left:20px; pointer-events:auto; width:54px; height:54px; border-radius:50%; border:3px solid var(--ink); background:rgba(255,247,232,.95); box-shadow:3px 3px 0 rgba(42,33,24,.25); font-size:26px; cursor:pointer; }
+  #guide-btn:active{ transform:translateY(2px); }
+  #guide-btn .dot{ display:none; position:absolute; top:-2px; right:-2px; width:16px; height:16px; border-radius:50%; background:var(--coral); border:2px solid var(--ink); }
+  #guide-btn.has-new .dot{ display:block; animation:bump 1s ease infinite; }
+  #journal-backdrop, #guide-backdrop{ position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(20,40,55,.55); backdrop-filter:blur(3px); }
+  #journal-backdrop.open, #guide-backdrop.open{ display:flex; }
+  .guide-row{ display:flex; gap:10px; padding:10px; border:2px solid var(--paper-edge); border-radius:12px; margin-bottom:8px; background:rgba(244,217,166,.3); }
+  .guide-row.gdone{ background:rgba(95,191,106,.16); border-color:#9fd2a6; }
+  .guide-row.gnext{ background:rgba(255,122,77,.14); border-color:var(--coral); box-shadow:0 0 0 2px rgba(255,122,77,.25); }
+  .guide-row .gs{ font-family:'Fredoka',sans-serif; font-weight:700; font-size:18px; width:24px; text-align:center; color:var(--ink); }
+  .guide-row.gdone .gs{ color:var(--palm-deep); }
+  .guide-row .gc{ flex:1; display:flex; flex-direction:column; gap:3px; }
+  .guide-row .gc b{ font-family:'Fredoka',sans-serif; font-size:15px; }
+  .guide-row .gc i{ font-style:normal; font-size:12.5px; opacity:.8; }
+  .guide-row .gc u{ text-decoration:none; font-size:12.5px; font-weight:700; color:var(--coral-deep); }
+  .jrnl-group{ font-family:'Fredoka',sans-serif; font-weight:700; font-size:15px; margin:10px 0 6px; }
+  .jrnl-row{ display:flex; align-items:center; gap:10px; padding:8px 10px; border:2px solid var(--paper-edge); border-radius:10px; margin-bottom:6px; background:rgba(244,217,166,.35); }
+  .jrnl-row.found{ background:rgba(95,191,106,.18); border-color:#9fd2a6; }
+  .jrnl-row .ji{ font-size:22px; width:26px; text-align:center; }
+  .jrnl-row .jn{ flex:1; font-family:'Nunito',sans-serif; }
+  .jrnl-row .jn b{ font-family:'Fredoka',sans-serif; font-size:14px; }
+  .jrnl-row .jn i{ font-style:normal; font-size:12px; opacity:.75; display:block; }
+
+  #toast{ position:absolute; bottom:22px; left:50%; transform:translateX(-50%); background:rgba(42,33,24,.9); color:#fff; padding:11px 20px; border-radius:999px; font-weight:700; font-size:14px; text-align:center; backdrop-filter:blur(4px); max-width:92vw; opacity:0; transition:opacity .35s ease; }
+  #toast.show{ opacity:1; }
+  #carry{ position:absolute; top:118px; left:50%; transform:translateX(-50%) translateY(-6px); background:linear-gradient(135deg,rgba(120,80,40,.94),rgba(90,58,28,.94)); color:#fff; padding:8px 16px; border-radius:999px; font-weight:700; font-size:13px; text-align:center; box-shadow:0 4px 14px rgba(0,0,0,.28); border:2px solid rgba(255,225,180,.5); backdrop-filter:blur(4px); max-width:92vw; opacity:0; pointer-events:none; transition:opacity .3s ease, transform .3s ease; }
+  #carry.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  #carry .carry-hint{ opacity:.8; font-weight:600; }
+  #needs{ position:absolute; bottom:84px; left:50%; transform:translateX(-50%); display:flex; gap:8px; pointer-events:none; }
+  #needs .need{ pointer-events:auto; display:flex; align-items:center; gap:6px; background:rgba(42,33,24,.84); border:2px solid rgba(255,247,232,.35); border-radius:999px; padding:5px 11px 5px 8px; font-size:16px; cursor:pointer; box-shadow:0 3px 8px rgba(0,0,0,.25); }
+  #needs .need:active{ transform:translateY(1px); }
+  #needs #need-warmth{ cursor:default; }
+  #needs .nbar{ width:44px; height:9px; border-radius:6px; background:rgba(255,255,255,.2); overflow:hidden; }
+  #needs .nbar i{ display:block; height:100%; width:100%; background:#5fbf6a; transition:width .25s ease, background .25s ease; }
+  #needs .need.low{ animation:bump .8s ease infinite; border-color:var(--coral); }
+  #rest{ position:fixed; inset:0; background:rgba(20,28,40,.78); backdrop-filter:blur(5px); display:none; align-items:center; justify-content:center; z-index:50; pointer-events:auto; }
+  #rest.open{ display:flex; }
+  #rest .rest-card{ background:#fff7e8; border:4px solid var(--ink); border-radius:24px; box-shadow:6px 6px 0 rgba(42,33,24,.3); padding:26px 24px; max-width:340px; width:86vw; text-align:center; animation:pop .35s ease; }
+  #rest .rest-emoji{ font-size:52px; }
+  #rest h2{ font-family:'Fredoka',sans-serif; margin:6px 0 8px; color:var(--ink); font-size:24px; }
+  #rest p{ color:#5a4a36; font-size:15px; line-height:1.5; margin:0 0 18px; }
+  #rest button{ font-family:'Fredoka',sans-serif; font-weight:600; font-size:18px; color:#fff; background:linear-gradient(135deg,#ffb02e,#ff7a4d); border:3px solid var(--ink); border-radius:14px; padding:11px 22px; cursor:pointer; box-shadow:3px 3px 0 rgba(42,33,24,.3); }
+  #rest button:active{ transform:translateY(2px); box-shadow:1px 1px 0 rgba(42,33,24,.3); }
+
+  #modal-backdrop{ position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(20,40,55,.55); backdrop-filter:blur(3px); animation:fade .3s ease; }
+  #modal-backdrop.open{ display:flex; }
+  @keyframes fade{ from{opacity:0} to{opacity:1} }
+  .card{ width:min(440px,94vw); background:var(--paper); border:4px solid var(--ink); border-radius:20px; box-shadow:10px 12px 0 rgba(42,33,24,.3); padding:26px 24px; position:relative; --accent:#ff7a4d; --accent-deep:#e85d31; animation:pop .35s cubic-bezier(.2,1.3,.4,1); }
+  @keyframes pop{ from{transform:scale(.8) rotate(-1deg); opacity:0} to{transform:scale(1) rotate(0); opacity:1} }
+  .card::before{ content:""; position:absolute; top:-12px; left:50%; transform:translateX(-50%) rotate(-3deg); width:120px; height:24px; background:var(--accent); opacity:.7; border:2px dashed rgba(42,33,24,.4); border-radius:4px; }
+  .card .eyebrow{ font-family:'Fredoka',sans-serif; color:var(--accent-deep); font-weight:700; letter-spacing:1px; text-transform:uppercase; font-size:13px; }
+  .card.chop .eyebrow{ color:var(--palm-deep); }
+  .card.chop::before{ background:rgba(47,143,91,.6); }
+  .card h2{ font-family:'Fredoka',sans-serif; font-size:24px; font-weight:700; margin:2px 0 12px; }
+  .card .story{ font-size:15px; line-height:1.5; margin-bottom:14px; }
+  .card .story b{ color:var(--accent-deep); }
+  .card.chop .story b{ color:var(--palm-deep); }
+  .diagram{ background:rgba(244,217,166,.5); border:2px solid var(--paper-edge); border-radius:12px; padding:14px 12px; margin-bottom:16px; font-family:'Fredoka',sans-serif; text-align:center; font-size:14px; line-height:1.7; }
+  .diagram .rect{ display:inline-block; border:3px dashed var(--coral-deep); border-radius:8px; padding:18px 34px; margin:6px 0; position:relative; font-weight:600; }
+  .diagram .lab-top{ position:absolute; top:-12px; left:50%; transform:translateX(-50%); background:var(--paper); padding:0 6px; }
+  .diagram .lab-side{ position:absolute; right:-14px; top:50%; transform:translateY(-50%) rotate(90deg); background:var(--paper); padding:0 6px; color:var(--sea); }
+  .answer-row{ display:flex; gap:10px; align-items:stretch; }
+  .answer-row input{ flex:1; font-family:'Fredoka',sans-serif; font-size:20px; text-align:center; border:3px solid var(--ink); border-radius:12px; padding:10px; background:#fff; color:var(--ink); min-width:0; }
+  .answer-row input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 4px rgba(255,122,77,.25); }
+  .unit{ display:flex; align-items:center; font-family:'Fredoka',sans-serif; font-weight:600; font-size:18px; }
+  .btn{ width:100%; margin-top:16px; font-family:'Fredoka',sans-serif; font-weight:700; font-size:18px; color:#fff; background:var(--accent); border:3px solid var(--ink); border-radius:14px; padding:13px; cursor:pointer; box-shadow:0 5px 0 var(--accent-deep); transition:transform .08s, box-shadow .08s; }
+  .btn:active{ transform:translateY(4px); box-shadow:0 1px 0 var(--accent-deep); }
+  .card.chop .btn-check{ background:var(--palm); box-shadow:0 5px 0 var(--palm-deep); }
+  .card.chop .btn-check:active{ box-shadow:0 1px 0 var(--palm-deep); }
+  .feedback{ margin-top:14px; font-weight:800; font-size:15px; line-height:1.45; }
+  .feedback.hint{ color:var(--accent-deep); }
+  .card.chop .feedback.hint{ color:var(--palm-deep); }
+  .feedback.win{ color:var(--palm-deep); }
+  .win-only{ display:none; }
+  .card.solved .answer-row, .card.solved .btn-check, .card.solved .diagram, .card.solved .story{ display:none; }
+  .card.solved .win-only{ display:block; }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="hud">
+  <div class="title-badge"><span id="day-badge">Day 1</span><h1>Survival Island</h1></div>
+  <div id="resources">🪵 <span id="r-wood">0</span>  💧 <span id="r-water">0</span>L  🍎 <span id="r-food">0</span>  ⭐ <span id="r-xp">0</span></div>
+  <div id="goals">
+    <span class="goal" id="g-shelter">🏕️ <i>0/3</i></span>
+    <span class="goal" id="g-water">💧 <i>0/6</i></span>
+    <span class="goal" id="g-food">🍎 <i>0/18</i></span>
+    <span class="goal" id="g-fire">🔥 <i>✗</i></span>
+  </div>
+  <div id="toast"></div>
+  <div id="carry"></div>
+  <div id="needs">
+    <button class="need" id="need-thirst" title="Drink"><span>💧</span><span class="nbar"><i></i></span></button>
+    <button class="need" id="need-hunger" title="Eat"><span>🍖</span><span class="nbar"><i></i></span></button>
+    <div class="need" id="need-warmth" title="Warmth"><span>🔥</span><span class="nbar"><i></i></span></div>
+  </div>
+  <button id="journal-btn">📔</button>
+  <button id="guide-btn">📖<span class="dot"></span></button>
+</div>
+<div id="rest"><div class="rest-card"><div class="rest-emoji">💤</div><h2>You had to rest</h2><p id="rest-msg"></p><button id="rest-go">Rise &amp; shine ☀️</button></div></div>
+<div id="modal-backdrop">
+  <div class="card" id="challenge-card">
+    <div class="eyebrow" id="ch-eyebrow">Challenge</div>
+    <h2 id="ch-title">Title</h2>
+    <p class="story" id="ch-story"></p>
+    <div class="diagram" id="ch-diagram"></div>
+    <div class="answer-row"><input id="ch-input" type="number" inputmode="decimal" placeholder="?" autocomplete="off" /><div class="unit" id="ch-unit">ft</div></div>
+    <button class="btn btn-check" id="ch-check">Go!</button>
+    <div class="feedback" id="ch-feedback"></div>
+    <div class="win-only"><p class="story" id="ch-winstory" style="display:block"></p><button class="btn" id="ch-continue">Keep exploring →</button></div>
+  </div>
+</div>
+
+<div id="craft-backdrop">
+  <div class="craft-card">
+    <div class="eyebrow" id="craft-eyebrow">Workbench</div>
+    <h2 id="craft-title">🛠️ Craft Tools</h2>
+    <p class="craft-sub" id="craft-sub">Build a tool, then use it out in the world.</p>
+    <div id="craft-list"></div>
+    <button class="btn" id="craft-close" style="--accent:#b07a3a;--accent-deep:#8a5d28">Done</button>
+  </div>
+</div>
+
+<div id="journal-backdrop">
+  <div class="craft-card">
+    <div class="eyebrow" id="jrnl-eyebrow">Field Journal</div>
+    <h2>📔 Discoveries</h2>
+    <p class="craft-sub" id="jrnl-sub">Catch fish and gather fruit to fill your journal!</p>
+    <div id="journal-list"></div>
+    <button class="btn" id="journal-close" style="--accent:#3a7bd5;--accent-deep:#285a9e">Close</button>
+  </div>
+</div>
+
+<div id="guide-backdrop">
+  <div class="craft-card">
+    <div class="eyebrow">Survival Guide</div>
+    <h2>📖 How to Survive</h2>
+    <p class="craft-sub">Your step-by-step plan. Do them in any order — ➜ marks what's suggested next.</p>
+    <div id="guide-list"></div>
+    <button class="btn" id="guide-close" style="--accent:#7a9c3a;--accent-deep:#5d7a28">Close</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* =====================================================================
+   SURVIVAL ISLAND — walking explorer + gather→return→build loop
+   1) Scene  2) World+nodes  3) Character  4) Inventory
+   5) Challenges  6) Modal  7) Build  8) Movement+interaction  9) Loop
+   ===================================================================== */
+
+/* ----------------------------- 1) SCENE ----------------------------- */
+const canvas=document.getElementById('scene');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();
+scene.background=new THREE.Color('#bfe9f2');
+scene.fog=new THREE.Fog('#bfe9f2',190,480);
+const camera=new THREE.PerspectiveCamera(55,1,0.1,500);
+const UP=new THREE.Vector3(0,1,0);
+const orbit={radius:50,theta:0.85,phi:1.0,target:new THREE.Vector3(0,1.6,14)};
+function applyCamera(){
+  orbit.phi=Math.max(0.35,Math.min(1.4,orbit.phi));
+  orbit.radius=Math.max(24,Math.min(120,orbit.radius));
+  camera.position.set(
+    orbit.target.x+orbit.radius*Math.sin(orbit.phi)*Math.sin(orbit.theta),
+    orbit.target.y+orbit.radius*Math.cos(orbit.phi),
+    orbit.target.z+orbit.radius*Math.sin(orbit.phi)*Math.cos(orbit.theta));
+  camera.lookAt(orbit.target);
+}
+const hemi=new THREE.HemisphereLight('#fffaf0','#7ac0a0',0.9); scene.add(hemi);
+const sun=new THREE.DirectionalLight('#fff2cc',1.1);
+sun.position.set(70,100,40); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-110;sun.shadow.camera.right=110;sun.shadow.camera.top=110;sun.shadow.camera.bottom=-110; sun.shadow.camera.far=300;
+scene.add(sun);
+
+/* --------------------------- 2) WORLD ------------------------------ */
+const ISLAND_R=78, WALK_R=82, SHORE_R=96;
+// procedural terrain height — flat inland (so camp/stations sit at y0), beach slope, hills cluster (NW)
+const HILLS=[[-52,-46,14,16],[-66,-30,10,11],[-38,-62,9,11],[-50,-66,7,9]];
+function terrainH(x,z){
+  const r=Math.hypot(x,z);
+  let y = r<ISLAND_R ? 0 : (r<SHORE_R ? -3*(r-ISLAND_R)/(SHORE_R-ISLAND_R) : -3-(r-SHORE_R)*0.2);
+  for(const b of HILLS){ const dx=x-b[0],dz=z-b[1]; y+=b[2]*Math.exp(-(dx*dx+dz*dz)/(2*b[3]*b[3])); }
+  return y;
+}
+// terrain mesh with zone vertex colors (grass / sand / rock)
+const terraGeo=new THREE.PlaneGeometry(230,230,128,128); terraGeo.rotateX(-Math.PI/2);
+(function(){ const p=terraGeo.attributes.position, col=[];
+  const grass=new THREE.Color('#6fae57'), grass2=new THREE.Color('#5d9c49'), beach=new THREE.Color('#f0d29a'), rock=new THREE.Color('#9c8e76');
+  for(let i=0;i<p.count;i++){ const x=p.getX(i), z=p.getZ(i), y=terrainH(x,z); p.setY(i,y); const r=Math.hypot(x,z);
+    let c = y>5 ? rock : (r>64 ? beach : (Math.sin(x*0.35)*Math.cos(z*0.35)>0?grass:grass2));
+    col.push(c.r,c.g,c.b); }
+  terraGeo.setAttribute('color',new THREE.Float32BufferAttribute(col,3)); terraGeo.computeVertexNormals(); })();
+const terrain=new THREE.Mesh(terraGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:1})); terrain.receiveShadow=true; scene.add(terrain);
+
+const oceanGeo=new THREE.PlaneGeometry(600,600,40,40);
+const ocean=new THREE.Mesh(oceanGeo,new THREE.MeshStandardMaterial({color:'#1f9fb4',transparent:true,opacity:.92,roughness:.4}));
+ocean.rotation.x=-Math.PI/2; ocean.position.y=-1.5; scene.add(ocean);
+const oceanBase=oceanGeo.attributes.position.array.slice();
+
+const choppables=[];
+function registerTree(g){ g.userData.isTree=true; g.traverse(o=>{ if(o.isMesh) choppables.push(o); }); }
+function makePalm(x,z,s){ const g=new THREE.Group();
+  const tr=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.5,6,8),new THREE.MeshStandardMaterial({color:'#9c6b3f',roughness:1}));
+  tr.position.y=3; tr.castShadow=true; tr.rotation.z=0.12; g.add(tr);
+  for(let i=0;i<6;i++){ const f=new THREE.Mesh(new THREE.ConeGeometry(0.7,4,5),new THREE.MeshStandardMaterial({color:'#2f8f5b',roughness:1}));
+    f.position.set(0,6,0); f.rotation.z=Math.PI/2.4; f.castShadow=true; const p=new THREE.Group(); p.add(f); p.rotation.y=(i/6)*Math.PI*2; g.add(p); }
+  g.position.set(x,terrainH(x,z),z); g.scale.setScalar(s); scene.add(g); registerTree(g); }
+
+const clouds=[];
+for(let i=0;i<4;i++){ const c=new THREE.Mesh(new THREE.SphereGeometry(3,10,10),new THREE.MeshStandardMaterial({color:'#fff',roughness:1}));
+  c.position.set(-30+i*20,24+Math.random()*6,-22-Math.random()*15); c.scale.set(1.8,0.7,1); scene.add(c); clouds.push(c); }
+
+const GROVE={x:56,z:14}, CAMP={x:0,z:14};
+const SHELTER_W=8, SHELTER_D=7;
+
+function makeEmojiTexture(ch){ const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d'); x.font='100px serif'; x.textAlign='center'; x.textBaseline='middle'; x.fillText(ch,64,74); return new THREE.CanvasTexture(c); }
+function makeSpot(x,z,emoji,color,name){
+  const g=new THREE.Group(); const y=terrainH(x,z); g.position.set(x,y,z);
+  const halo=new THREE.Sprite(new THREE.SpriteMaterial({color,transparent:true,opacity:.5,depthWrite:false})); halo.scale.set(3.4,3.4,1); halo.position.y=4.4; g.add(halo);
+  const icon=new THREE.Sprite(new THREE.SpriteMaterial({map:makeEmojiTexture(emoji),transparent:true,depthWrite:false})); icon.scale.set(2.2,2.2,1); icon.position.y=4.4; g.add(icon);
+  const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,3.0,5),new THREE.MeshStandardMaterial({color:'#ffffff',transparent:true,opacity:.3})); stem.position.y=1.6; g.add(stem);
+  scene.add(g);
+  return {group:g, ring:halo, pad:halo, icon, base:y};
+}
+const grove=makeSpot(GROVE.x,GROVE.z,'🌲','#5fbf6a','tree_grove');
+const groveTrees=[];
+[[-2.5,-1.5,1],[2,1,1.2],[0.5,-2.8,0.9],[-1.5,2.4,1.05]].forEach(([dx,dz,s])=>{
+  const tree=new THREE.Group();
+  const tr=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.45,3,7),new THREE.MeshStandardMaterial({color:'#8a5a32',roughness:1})); tr.position.y=1.5; tr.castShadow=true; tree.add(tr);
+  for(let k=0;k<3;k++){ const c=new THREE.Mesh(new THREE.ConeGeometry(2-k*0.45,2,8),new THREE.MeshStandardMaterial({color:'#2f8f5b',roughness:1})); c.position.y=3+k*1.3; c.castShadow=true; tree.add(c); }
+  tree.position.set(GROVE.x+dx,0,GROVE.z+dz); tree.scale.setScalar(s); scene.add(tree); groveTrees.push(tree); registerTree(tree);
+});
+const camp=makeSpot(CAMP.x,CAMP.z,'🏕️','#ff8a5c','camp_site');
+const campBox=new THREE.Mesh(new THREE.BoxGeometry(SHELTER_W,3.4,SHELTER_D),new THREE.MeshStandardMaterial({color:'#ff7a4d',transparent:true,opacity:.32,emissive:'#ff7a4d',emissiveIntensity:.5}));
+campBox.position.set(CAMP.x,1.7,CAMP.z); scene.add(campBox);
+
+// ---- visible material stockpiles at camp (wood / food / water) ----
+const PX=CAMP.x-11;
+const pileWood=new THREE.Group();  pileWood.position.set(PX,terrainH(PX,CAMP.z-2),CAMP.z-2); scene.add(pileWood);
+const pileFood=new THREE.Group();  pileFood.position.set(PX,terrainH(PX,CAMP.z+2),CAMP.z+2); scene.add(pileFood);
+const pileWater=new THREE.Group(); pileWater.position.set(PX,terrainH(PX,CAMP.z+6),CAMP.z+6); scene.add(pileWater);
+const M_WOOD=new THREE.MeshStandardMaterial({color:'#8a5a32',roughness:1}), M_FOOD=new THREE.MeshStandardMaterial({color:'#e0552f',roughness:.8}), M_WATER=new THREE.MeshStandardMaterial({color:'#3aa6d8',roughness:.4,transparent:true,opacity:.9});
+function hitbox(x,z,name){ const h=new THREE.Mesh(new THREE.BoxGeometry(3.2,3,3.2),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false})); h.position.set(x,1.4,z); h.name=name; scene.add(h); return h; }
+const hbWood=hitbox(PX,CAMP.z-2,'pile_wood'), hbFood=hitbox(PX,CAMP.z+2,'pile_food'), hbWater=hitbox(PX,CAMP.z+6,'pile_water');
+function updatePiles(){
+  const nW=Math.min(15,Math.ceil(inventory.wood/3)); clearGroup(pileWood);
+  for(let i=0;i<nW;i++){ const r=Math.floor(i/3),c=i%3; const log=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,2,7),M_WOOD); log.rotation.z=Math.PI/2; log.position.set(0,0.25+r*0.42,-0.5+c*0.5+(r%2)*0.12); log.castShadow=true; pileWood.add(log); }
+  const nF=Math.min(15,Math.ceil(inventory.food/3)); clearGroup(pileFood);
+  for(let i=0;i<nF;i++){ const r=Math.floor(i/4),c=i%4; const fr=new THREE.Mesh(new THREE.SphereGeometry(0.3,8,8),M_FOOD); fr.position.set(-0.5+c*0.42,0.3+r*0.4,(r%2)*0.3); fr.castShadow=true; pileFood.add(fr); }
+  const nWa=Math.min(8,Math.ceil(inventory.water/2)); clearGroup(pileWater);
+  for(let i=0;i<nWa;i++){ const r=Math.floor(i/3),c=i%3; const jug=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.36,0.8,8),M_WATER); jug.position.set(-0.5+c*0.55,0.4+r*0.85,0); jug.castShadow=true; pileWater.add(jug); }
+}
+// chop feedback: shake a grove tree and drop a log that hops then fades
+function chopFX(tree){
+  if(!tree||!tree.position) tree=groveTrees[Math.floor(Math.random()*groveTrees.length)]; const s1=performance.now();
+  (function shake(){ const t=(performance.now()-s1)/650; if(t<1){ tree.rotation.z=Math.sin(t*32)*0.13*(1-t); requestAnimationFrame(shake);} else tree.rotation.z=0; })();
+  const bx=tree.position.x+1.2, bz=tree.position.z+1, gy=terrainH(bx,bz);
+  const log=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,1.6,8),new THREE.MeshStandardMaterial({color:'#8a5a32',transparent:true})); log.rotation.z=Math.PI/2; log.position.set(bx,gy+0.3,bz); log.castShadow=true; scene.add(log);
+  const s2=performance.now();
+  (function hop(){ const t=(performance.now()-s2)/1000; if(t<1){ log.position.y=gy+0.3+Math.abs(Math.sin(t*Math.PI*2))*0.7*(1-t); log.material.opacity=t>0.6?1-(t-0.6)/0.4:1; requestAnimationFrame(hop);} else scene.remove(log); })();
+}
+
+/* --------------------------- 3) CHARACTER --------------------------- */
+function makeCharacter(){
+  const g=new THREE.Group();
+  const skin=new THREE.MeshStandardMaterial({color:'#f1c27d',roughness:1});
+  const shirt=new THREE.MeshStandardMaterial({color:'#3a7bd5',roughness:1});
+  const pants=new THREE.MeshStandardMaterial({color:'#5a4634',roughness:1});
+  const hatMat=new THREE.MeshStandardMaterial({color:'#c9a86a',roughness:1});
+  // torso
+  const torso=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.48,1.0,12),shirt); torso.position.y=1.45; torso.castShadow=true; g.add(torso);
+  // backpack
+  const pack=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.8,0.35),new THREE.MeshStandardMaterial({color:'#7a4a25',roughness:1})); pack.position.set(0,1.5,-0.45); pack.castShadow=true; g.add(pack);
+  // head
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.42,16,16),skin); head.position.y=2.25; head.castShadow=true; g.add(head);
+  // sun hat
+  const brim=new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.62,0.08,16),hatMat); brim.position.y=2.55; brim.castShadow=true; g.add(brim);
+  const crown=new THREE.Mesh(new THREE.ConeGeometry(0.4,0.45,16),hatMat); crown.position.y=2.8; crown.castShadow=true; g.add(crown);
+  // limbs on pivots so they swing from the joint
+  function limb(x,y,len,rad,mat){ const pivot=new THREE.Group(); pivot.position.set(x,y,0);
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,len,8),mat); m.position.y=-len/2; m.castShadow=true; pivot.add(m); g.add(pivot); return pivot; }
+  const armL=limb(0.55,1.85,0.9,0.13,shirt), armR=limb(-0.55,1.85,0.9,0.13,shirt);
+  const legL=limb(0.22,1.0,1.0,0.17,pants), legR=limb(-0.22,1.0,1.0,0.17,pants);
+  scene.add(g);
+  return {group:g,armL,armR,legL,legR};
+}
+const hero=makeCharacter();
+// visible load the explorer hauls on his back until he reaches camp
+const carryLoad=new THREE.Group(); carryLoad.position.set(0,1.9,-0.55); hero.group.add(carryLoad);
+function updateCarry(){
+  clearGroup(carryLoad);
+  let y=0;
+  const nW=Math.min(6,Math.ceil(carrying.wood/2));
+  for(let i=0;i<nW;i++){ const l=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.85,6),M_WOOD); l.rotation.z=Math.PI/2; l.rotation.y=(i*0.4); l.position.set(0,y+0.14+i*0.17,0); l.castShadow=true; carryLoad.add(l); }
+  if(nW) y+=0.14+nW*0.17+0.05;
+  const nF=Math.min(6,Math.ceil(carrying.food/2));
+  for(let i=0;i<nF;i++){ const fr=new THREE.Mesh(new THREE.SphereGeometry(0.15,8,8),M_FOOD); fr.position.set(-0.2+(i%3)*0.2,y+0.16+Math.floor(i/3)*0.3,0); fr.castShadow=true; carryLoad.add(fr); }
+  if(nF) y+=0.16+Math.ceil(nF/3)*0.3;
+  if(carrying.water>0){ const j=new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.2,0.5,10),M_WATER); j.position.set(0,y+0.28,0); j.castShadow=true; carryLoad.add(j); const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.12,8),M_WOOD); cap.position.set(0,y+0.58,0); carryLoad.add(cap); }
+  const ce=document.getElementById('carry');
+  const tot=carrying.wood+carrying.food+carrying.water;
+  if(ce){ if(tot>0){ const p=[]; if(carrying.wood)p.push(carrying.wood+'🪵'); if(carrying.food)p.push(carrying.food+'🍎'); if(carrying.water)p.push((+carrying.water.toFixed(1))+'💧'); ce.innerHTML='🎒 Carrying '+p.join('  ')+' <span class="carry-hint">→ take to 🏕️ camp</span>'; ce.classList.add('show'); } else ce.classList.remove('show'); }
+}
+
+/* --------------------------- 4) INVENTORY --------------------------- */
+const inventory={wood:0,water:0,food:0,xp:0}; const carrying={wood:0,food:0,water:0}; const collected={water:0,food:0};
+const NEEDS={thirst:100,hunger:100,warmth:100}; const NEED_DRAIN={thirst:0.30,hunger:0.22,warmth:0.16}; const WARM_RATE=11; const warned={thirst:false,hunger:false,warmth:false};
+const WARN={thirst:'💧 Getting thirsty — tap the 💧 bar to drink (need water at 🏕️ camp).',hunger:'🍖 Getting hungry — tap the 🍖 bar to eat (need food at 🏕️ camp).',warmth:'🥶 Getting cold — warm up beside your lit 🔥 fire.'}; let needGrace=30, collapsing=false;
+let fireLit=false, campLevel=0; const FLOOR_COST=10, WALL_COST=14, ROOF_COST=18, FIRE_LOGS=4, WATER_GOAL=6, FOOD_GOAL=18, XP_PER_TASK=10; let floorBuilt=false; let stageIndex=0;
+const elWood=document.getElementById('r-wood'), elWater=document.getElementById('r-water'), elFood=document.getElementById('r-food'), elXp=document.getElementById('r-xp'), resEl=document.getElementById('resources');
+const goalEls={shelter:document.getElementById('g-shelter'),water:document.getElementById('g-water'),food:document.getElementById('g-food'),fire:document.getElementById('g-fire')};
+let lastGuideDone=0;
+function setGoal(elm,done,label){ elm.querySelector('i').textContent=label; elm.classList.toggle('done',done); }
+function updateHUD(){
+  elWood.textContent=inventory.wood; elWater.textContent=(+inventory.water.toFixed(1)); elFood.textContent=inventory.food; elXp.textContent=inventory.xp;
+  resEl.classList.remove('bump'); void resEl.offsetWidth; resEl.classList.add('bump');
+  setGoal(goalEls.shelter, campLevel>=3, campLevel>=3?'✓':('Lvl '+campLevel));
+  setGoal(goalEls.water, collected.water>=WATER_GOAL, collected.water>=WATER_GOAL?'✓':`${(+collected.water.toFixed(1))}/${WATER_GOAL}`);
+  setGoal(goalEls.food, collected.food>=FOOD_GOAL, collected.food>=FOOD_GOAL?'✓':`${collected.food}/${FOOD_GOAL}`);
+  setGoal(goalEls.fire, fireLit, fireLit?'✓':'✗');
+  if(typeof updatePiles==='function') updatePiles();
+  if(typeof GUIDE!=='undefined'){ const gd=GUIDE.reduce((n,st)=>n+(st.done()?1:0),0); if(gd>lastGuideDone){ lastGuideDone=gd; const gb=document.getElementById('guide-btn'); if(gb) gb.classList.add('has-new'); if(typeof showToast==='function') showToast('📖 Survival Guide updated — open it for your next step!',3600); } }
+}
+function addResource(key,n){ inventory[key]=Math.max(0,+(inventory[key]+n).toFixed(2)); updateHUD(); }
+function addWood(n){ addResource('wood',n); }
+let won=false; let day=1, sleeping=false, foodFenceBuilt=false;
+function checkAllGoals(){ if(won)return; if(campLevel>=3 && collected.water>=WATER_GOAL && collected.food>=FOOD_GOAL && fireLit){ won=true; setTimeout(()=>showToast("🎉 You mastered Day 1! Shelter, water, food, and fire — you're a true survivor!",9000),400); } }
+
+/* --------------------------- 5) CHALLENGES -------------------------- */
+const CHOP_POOL=[
+  {answer:4,story:"You found a tall palm! It's <b>12 ft</b> tall and you saw it into <b>3 ft</b> logs. How many logs do you get?",diagram:"12 ft tree  ÷  3 ft logs  =  ?",hints:["Equal-size logs means you're <b>dividing</b>. How many 3s fit in 12?","Count up by 3s: 3, 6, 9, 12 — how many jumps?"]},
+  {answer:6,story:"You chop <b>2</b> small trees. Each breaks into <b>3</b> logs. How many logs total?",diagram:"2 trees  ×  3 logs each  =  ?",hints:["Equal groups means you can <b>multiply</b>: 2 groups of 3.","3 + 3 is the same as 2 × 3. What's the total?"]},
+  {answer:5,story:"This pine is <b>15 ft</b> tall. You cut <b>3 ft</b> logs. How many logs?",diagram:"15 ft tree  ÷  3 ft logs  =  ?",hints:["How many 3s make 15?","3, 6, 9, 12, 15 — the answer is hiding in the count!"]},
+  {answer:7,story:"A driftwood log is <b>14 ft</b> long. You saw <b>2 ft</b> pieces. How many pieces?",diagram:"14 ft  ÷  2 ft pieces  =  ?",hints:["How many 2s fit in 14?","Half of 14 is the same as 14 ÷ 2."]},
+];
+let chopIndex=0;
+const FLOOR_CHALLENGE={kind:'build',eyebrow:'Perimeter Challenge',title:'🏕️ Lay the Floor',unit:'ft',
+  story:"Time to build! You'll border the rectangular floor with <b>30 ft</b> of edging rope. The length is <b>8 ft</b>. What <b>width</b> uses every last foot of rope?",
+  diagram:`<div class="rect"><span class="lab-top">length = 8 ft</span><span class="lab-side">width = ?</span>floor</div><div>Rope around the edge (perimeter) = 30 ft</div>`,
+  answer:7,tolerance:0.001,
+  winStory:`Nailed it! 2 × (8 + 7) = 30 ft — every foot used. Floor laid! (−${FLOOR_COST} 🪵) Now haul wood back for the walls!`,
+  hints:["The rope wraps the whole rectangle — the <b>perimeter</b>. A rectangle has 2 lengths and 2 widths.","The two 8 ft lengths use 8 + 8 = <b>16 ft</b>. How much rope is left for the two widths?","30 − 16 = 14 ft for <b>two</b> widths. So one width = 14 ÷ 2."],
+  onSolve:()=>{ addWood(-FLOOR_COST); buildFloor(); advanceStage(); }};
+const WALL_CHALLENGE={kind:'build',eyebrow:'Area Challenge',title:'🧱 Raise the Walls',unit:'sq ft',
+  story:"Now weave palm-leaf walls! One wall panel is <b>8 ft</b> long and <b>6 ft</b> tall. How many <b>square feet</b> of thatch cover that wall?",
+  diagram:`<div class="rect"><span class="lab-top">8 ft long</span><span class="lab-side">6 ft tall</span>wall</div><div>Area = length × height</div>`,
+  answer:48,tolerance:0.001,
+  winStory:`Beautiful weaving! 8 × 6 = 48 sq ft of thatch per wall. Walls up! (−${WALL_COST} 🪵) One more haul — the roof is next!`,
+  hints:["Area is the whole surface covered — like tiles filling the wall. Multiply <b>length × height</b>.","Try 8 × 6 — picture 8 columns with 6 squares stacked in each.","Count by 8s six times: 8, 16, 24, 32, 40, 48."],
+  onSolve:()=>{ addWood(-WALL_COST); buildWalls(); advanceStage(); }};
+const ROOF_CHALLENGE={kind:'build',eyebrow:'Volume Challenge',title:'⛺ Thatch the Roof',unit:'cubic ft',
+  story:"Last job — pile palm thatch over the whole roof! It covers the <b>8 ft</b> by <b>7 ft</b> shelter, stacked <b>0.5 ft</b> thick. What <b>volume</b> of thatch do you need?",
+  diagram:`<div class="rect"><span class="lab-top">8 ft × 7 ft</span><span class="lab-side">0.5 ft thick</span>roof</div><div>Volume = length × width × thickness</div>`,
+  answer:28,tolerance:0.001,
+  winStory:`🎉 Incredible! 8 × 7 × 0.5 = 28 cubic ft of thatch. Your shelter is COMPLETE — you survived Day 1, explorer!`,
+  hints:["Volume fills <b>3</b> directions: length × width × thickness. Multiply all three.","First the floor area: 8 × 7 = <b>56 sq ft</b>. Then multiply by the 0.5 ft thickness.","Multiplying by 0.5 is the same as taking <b>half</b>. Half of 56 is… 28!"],
+  onSolve:()=>{ addWood(-ROOF_COST); buildRoof(); advanceStage(); }};
+// build stages, in order
+const STAGES=[{name:'floor',cost:FLOOR_COST,challenge:FLOOR_CHALLENGE},{name:'walls',cost:WALL_COST,challenge:WALL_CHALLENGE},{name:'roof',cost:ROOF_COST,challenge:ROOF_CHALLENGE}];
+function advanceStage(){ stageIndex++; if(stageIndex>=STAGES.length){ camp.ring.material.color.set('#5fbf6a'); camp.pad.material.color.set('#5fbf6a'); camp.pad.material.emissive.set('#5fbf6a'); } updateHUD(); checkAllGoals(); }
+
+/* ============ SURVIVAL STATIONS: water · food · fishing · fire ============ */
+function station(x,z,emoji,color,name){ return makeSpot(x,z,emoji,color,name); }
+
+// Spring — collect water
+const SPRING={x:30,z:60}; const spring=station(SPRING.x,SPRING.z,'💧','#2f9bd4','spring');
+const springWater=new THREE.Mesh(new THREE.CircleGeometry(3,28),new THREE.MeshStandardMaterial({color:'#2f9bd4',transparent:true,opacity:.85,roughness:.3}));
+springWater.rotation.x=-Math.PI/2; springWater.position.set(SPRING.x,0.16,SPRING.z); scene.add(springWater);
+[[-3,-2],[3,-1],[2,3],[-3,2]].forEach(([dx,dz])=>{ const rock=new THREE.Mesh(new THREE.SphereGeometry(0.7,8,8),new THREE.MeshStandardMaterial({color:'#8a8d92',roughness:1})); rock.position.set(SPRING.x+dx,0.3,SPRING.z+dz); rock.scale.y=0.7; rock.castShadow=true; scene.add(rock); });
+
+// Coconut grove — gather food
+const COCO={x:40,z:42}; const coco=station(COCO.x,COCO.z,'🍃','#e0992f','coconuts');
+makePalm(COCO.x-1.5,COCO.z-1,1.1); makePalm(COCO.x+1.8,COCO.z+1.5,0.95);
+[[-1.5,5.4,-1],[-1.1,5.1,-1.4],[1.8,5.1,1.5],[2.1,4.9,1.1]].forEach(([dx,dy,dz])=>{ const nut=new THREE.Mesh(new THREE.SphereGeometry(0.34,8,8),new THREE.MeshStandardMaterial({color:'#6b4423',roughness:1})); nut.position.set(COCO.x+dx,dy,COCO.z+dz); nut.castShadow=true; scene.add(nut); });
+
+// Fishing spot — a stocked pond with a dock + posed angler
+const FISH={x:-22,z:62}; const fish=station(FISH.x,FISH.z,'🎣','#1f9fb4','fishing');
+const pondDeep=new THREE.Mesh(new THREE.CircleGeometry(6.2,36),new THREE.MeshStandardMaterial({color:'#0f6f9c',roughness:.25})); pondDeep.rotation.x=-Math.PI/2; pondDeep.position.set(FISH.x,0.06,FISH.z); scene.add(pondDeep);
+const lagoon=new THREE.Mesh(new THREE.CircleGeometry(5.6,36),new THREE.MeshStandardMaterial({color:'#34a6d8',transparent:true,opacity:.78,roughness:.3})); lagoon.rotation.x=-Math.PI/2; lagoon.position.set(FISH.x,0.2,FISH.z); scene.add(lagoon);
+for(let i=0;i<16;i++){ const a=i/16*Math.PI*2, rr=5.7+Math.random()*0.9, x=FISH.x+Math.cos(a)*rr, z=FISH.z+Math.sin(a)*rr; const reed=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.07,1.4+Math.random()*0.9,5),new THREE.MeshStandardMaterial({color:'#4f9d5f',roughness:1})); reed.position.set(x,terrainH(x,z)+0.8,z); reed.rotation.set((Math.random()-0.5)*0.3,0,(Math.random()-0.5)*0.3); reed.castShadow=true; scene.add(reed); }
+for(let i=0;i<4;i++){ const a=Math.random()*6.28, rr=Math.random()*3.4; const lp=new THREE.Mesh(new THREE.CircleGeometry(0.6,12),new THREE.MeshStandardMaterial({color:'#3f9d5f',roughness:1})); lp.rotation.x=-Math.PI/2; lp.position.set(FISH.x+Math.cos(a)*rr,0.22,FISH.z+Math.sin(a)*rr); scene.add(lp); }
+for(let i=0;i<3;i++){ const plank=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.25,1.3),new THREE.MeshStandardMaterial({color:'#9c6b3f',roughness:1})); plank.position.set(FISH.x-4.4+i*1.5,0.42,FISH.z); plank.castShadow=true; scene.add(plank); }
+[-4.2,-1.4].forEach(dx=>{ const post=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,1.3,6),new THREE.MeshStandardMaterial({color:'#7a4a25'})); post.position.set(FISH.x+dx,-0.05,FISH.z+0.55); scene.add(post); });
+const lagoonFish=[];
+[['#e8763a',0,2.4],['#d9d2c4',2.2,-1.2],['#e8a93a',-2.3,-1.7]].forEach(([col,bx,bz])=>{
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.45,10,10),new THREE.MeshStandardMaterial({color:col,roughness:.7})); body.scale.set(1,0.5,0.5); g.add(body);
+  const tail=new THREE.Mesh(new THREE.ConeGeometry(0.3,0.5,6),new THREE.MeshStandardMaterial({color:col,roughness:.7})); tail.rotation.z=-Math.PI/2; tail.position.x=-0.55; g.add(tail);
+  g.position.set(FISH.x+bx,0.42,FISH.z+bz); scene.add(g); lagoonFish.push({g,bx,bz,ph:Math.random()*6.28}); });
+// angler rig: rod + line + bobber + ripple + hooked fish, shown while fishing
+function seg(a,b,r,m){ const d=new THREE.Vector3().subVectors(b,a),len=d.length(); const me=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,6),m); me.position.copy(a).add(b).multiplyScalar(0.5); me.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.clone().normalize()); return me; }
+const standX=FISH.x-0.6, standZ=FISH.z;
+const hand=new THREE.Vector3(standX,terrainH(standX,standZ)+1.9,standZ), tip=new THREE.Vector3(FISH.x+1.4,3.1,FISH.z), bobBase=new THREE.Vector3(FISH.x+1.4,0.32,FISH.z);
+const fishRig=new THREE.Group(); fishRig.visible=false; scene.add(fishRig);
+fishRig.add(seg(hand,tip,0.05,new THREE.MeshStandardMaterial({color:'#6b4a2a'})));
+fishRig.add(seg(tip,bobBase,0.015,new THREE.MeshStandardMaterial({color:'#eeeeee'})));
+const bobber=new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8),new THREE.MeshStandardMaterial({color:'#ff5a4d'})); bobber.position.copy(bobBase); fishRig.add(bobber);
+const hookFish=new THREE.Mesh(new THREE.SphereGeometry(0.32,8,8),new THREE.MeshStandardMaterial({color:'#e8a93a',roughness:.7})); hookFish.scale.set(1,0.5,0.5); hookFish.position.copy(bobBase); hookFish.visible=false; fishRig.add(hookFish);
+const ripple=new THREE.Mesh(new THREE.RingGeometry(0.3,0.5,18),new THREE.MeshBasicMaterial({color:'#cdeeff',transparent:true,opacity:.6,side:THREE.DoubleSide})); ripple.rotation.x=-Math.PI/2; ripple.position.set(bobBase.x,0.25,bobBase.z); fishRig.add(ripple);
+let fishing=false, fishPhase=0, caught=false;
+function startFishing(){ fishing=true; caught=false; fishPhase=0; hookFish.visible=false; hero.pos.set(standX,0,standZ); hero.walkTarget=null; hero.facing=Math.PI/2; fishRig.visible=true; }
+function stopFishing(){ fishing=false; fishRig.visible=false; hookFish.visible=false; hero.armR.rotation.set(0,0,0); }
+
+// Fire pit — start a fire (flames appear once lit)
+const FIRE={x:16,z:32}; const fire=station(FIRE.x,FIRE.z,'🔥','#e8552f','firepit');
+for(let i=0;i<8;i++){ const a=i/8*Math.PI*2; const stone=new THREE.Mesh(new THREE.SphereGeometry(0.4,8,8),new THREE.MeshStandardMaterial({color:'#8a8d92',roughness:1})); stone.position.set(FIRE.x+Math.cos(a)*1.6,0.25,FIRE.z+Math.sin(a)*1.6); stone.scale.y=0.7; stone.castShadow=true; scene.add(stone); }
+[[0,0.3],[0.4,-0.2]].forEach(([dx,dz],i)=>{ const log=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,2.2,8),new THREE.MeshStandardMaterial({color:'#7a4a25',roughness:1})); log.position.set(FIRE.x+dx,0.35,FIRE.z+dz); log.rotation.z=Math.PI/2; log.rotation.y=i*0.8; log.castShadow=true; scene.add(log); });
+const flames=new THREE.Group();
+['#ffcf3f','#ff8a2f','#ff5a2f'].forEach((c,i)=>{ const fl=new THREE.Mesh(new THREE.ConeGeometry(0.7-i*0.18,1.6-i*0.3,8),new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.9,transparent:true,opacity:.9})); fl.position.y=0.9-i*0.15; flames.add(fl); });
+flames.position.set(FIRE.x,0.4,FIRE.z); flames.visible=false; scene.add(flames);
+const fireLight=new THREE.PointLight('#ff8a3f',0,16); fireLight.position.set(FIRE.x,2.2,FIRE.z); scene.add(fireLight);
+function lightFire(){ if(fireLit)return; fireLit=true; flames.visible=true; fireLight.intensity=1.6; fire.ring.material.color.set('#5fbf6a'); updateHUD(); checkAllGoals(); }
+
+// Workbench — craft tools
+const BENCH={x:-22,z:6}; const bench=station(BENCH.x,BENCH.z,'🛠️','#b07a3a','workbench'); const SIGNS=[grove,camp,spring,coco,fish,fire,bench];
+const benchTop=new THREE.Mesh(new THREE.BoxGeometry(3,0.3,1.8),new THREE.MeshStandardMaterial({color:'#9c6b3f',roughness:1})); benchTop.position.set(BENCH.x,1.3,BENCH.z); benchTop.castShadow=true; scene.add(benchTop);
+[[1.3,0.7],[1.3,-0.7],[-1.3,0.7],[-1.3,-0.7]].forEach(([dx,dz])=>{ const leg=new THREE.Mesh(new THREE.BoxGeometry(0.25,1.3,0.25),new THREE.MeshStandardMaterial({color:'#7a4a25'})); leg.position.set(BENCH.x+dx,0.65,BENCH.z+dz); leg.castShadow=true; scene.add(leg); });
+const blade=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.7,1.0),new THREE.MeshStandardMaterial({color:'#c2c6cc',roughness:.5})); blade.position.set(BENCH.x-0.7,1.75,BENCH.z); blade.castShadow=true; scene.add(blade);
+const logpile=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,1.2,8),new THREE.MeshStandardMaterial({color:'#8a5a32'})); logpile.rotation.z=Math.PI/2; logpile.position.set(BENCH.x+0.9,1.6,BENCH.z); logpile.castShadow=true; scene.add(logpile);
+
+/* ---- foliage scatter across the zones ---- */
+function makeTree(x,z,s){ const g=new THREE.Group(); const tr=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.6,3.5,7),new THREE.MeshStandardMaterial({color:'#8a5a32',roughness:1})); tr.position.y=1.75; tr.castShadow=true; g.add(tr);
+  for(let k=0;k<3;k++){ const blob=new THREE.Mesh(new THREE.SphereGeometry(1.9-k*0.35,8,8),new THREE.MeshStandardMaterial({color:k%2?'#3f8a52':'#4f9d5f',roughness:1})); blob.position.set((Math.random()-0.5),3.4+k*1.1,(Math.random()-0.5)); blob.castShadow=true; g.add(blob); }
+  g.position.set(x,terrainH(x,z),z); g.scale.setScalar(s); scene.add(g); registerTree(g); }
+function makeRock(x,z,s){ const m=new THREE.Mesh(new THREE.DodecahedronGeometry(1),new THREE.MeshStandardMaterial({color:'#8d8f94',roughness:1})); m.position.set(x,terrainH(x,z)+0.3,z); m.scale.set(s,s*0.7,s); m.rotation.y=Math.random()*3; m.castShadow=true; scene.add(m); }
+function makeFlower(x,z){ const g=new THREE.Group(); const st=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.6,5),new THREE.MeshStandardMaterial({color:'#3f8a52'})); st.position.y=0.3; g.add(st); const top=new THREE.Mesh(new THREE.SphereGeometry(0.22,7,7),new THREE.MeshStandardMaterial({color:['#ffd23f','#ff6f91','#ffffff','#b78bff'][Math.floor(Math.random()*4)]})); top.position.y=0.65; g.add(top); g.position.set(x,terrainH(x,z),z); scene.add(g); }
+const STATION_PTS=[CAMP,GROVE,COCO,SPRING,FISH,FIRE,BENCH];
+function clearOf(x,z,d){ return STATION_PTS.every(p=>Math.hypot(x-p.x,z-p.z)>d); }
+// forest (east): leafy trees
+for(let i=0;i<24;i++){ const x=18+Math.random()*48, z=-14+Math.random()*72; if(Math.hypot(x,z)<72 && clearOf(x,z,9)) makeTree(x,z,0.8+Math.random()*0.7); }
+// beach ring: palms
+for(let i=0;i<16;i++){ const a=Math.random()*Math.PI*2, r=66+Math.random()*9, x=Math.cos(a)*r, z=Math.sin(a)*r; if(clearOf(x,z,8)) makePalm(x,z,0.8+Math.random()*0.5); }
+// hills (NW): rocks + a few pines
+for(let i=0;i<20;i++){ const x=-28-Math.random()*46, z=-22-Math.random()*52; if(Math.hypot(x,z)<78 && clearOf(x,z,6)) (Math.random()<0.6?makeRock(x,z,1+Math.random()*1.8):makeTree(x,z,0.7)); }
+// grass meadow: flowers + the odd rock
+for(let i=0;i<30;i++){ const a=Math.random()*Math.PI*2, r=Math.random()*60, x=Math.cos(a)*r, z=Math.sin(a)*r; if(Math.hypot(x,z)<62 && clearOf(x,z,7)) (Math.random()<0.8?makeFlower(x,z):makeRock(x,z,0.6)); }
+
+// --- station challenge pools (answer = amount gained) ---
+const WATER_POOL=[
+  {answer:6,unit:'L',story:"Your canteen holds <b>1.5 L</b>. You fill it <b>4</b> times into your barrel. How many liters of water?",diagram:"1.5 L  ×  4 fills  =  ?",hints:["1.5 × 4 means four lots of 1.5 L — add them up.","1.5, 3.0, 4.5, 6.0 — four jumps of 1.5."]},
+  {answer:7.5,unit:'L',story:"A clay gourd holds <b>2.5 L</b>. You fill it <b>3</b> times. How many liters?",diagram:"2.5 L  ×  3 fills  =  ?",hints:["Three lots of 2.5 L. Add 2.5 three times.","2.5, 5.0, 7.5 — that's your answer."]},
+  {answer:6,unit:'L',story:"You scoop <b>0.5 L</b> with each cup, <b>12</b> cups. How many liters?",diagram:"0.5 L  ×  12 cups  =  ?",hints:["0.5 L is half a liter — two cups make 1 L.","12 half-liters = 12 ÷ 2 = 6 L."]},
+];
+let waterIdx=0;
+const COCO_POOL=[
+  {answer:12,story:"You spot <b>3</b> bunches of fruit with <b>4</b> in each. How many fruits?",diagram:"3 bunches  ×  4 each  =  ?",hints:["Equal groups → multiply: 3 groups of 4.","4 + 4 + 4 = 12."]},
+  {answer:10,story:"<b>2</b> trees, each with <b>5</b> fruits. How many in all?",diagram:"2 trees  ×  5 each  =  ?",hints:["2 groups of 5.","5 + 5 = 10."]},
+  {answer:12,story:"<b>4</b> low branches, each holding <b>3</b> fruits. How many?",diagram:"4 branches  ×  3 each  =  ?",hints:["4 groups of 3.","3, 6, 9, 12."]},
+];
+let cocoIdx=0;
+const FISH_POOL=[
+  {answer:7,story:"You catch <b>3</b> fish at dawn and <b>4</b> more at dusk. How many fish?",diagram:"3  +  4  =  ?",hints:["Put the two catches together — add them.","3 and 4 more makes…?"]},
+  {answer:6,story:"You hooked <b>9</b> fish but <b>3</b> wriggled free. How many do you keep?",diagram:"9  −  3  =  ?",hints:["Some got away — take them off the total.","9 take away 3."]},
+  {answer:8,story:"Two nets bring in <b>5</b> and <b>3</b> fish. How many altogether?",diagram:"5  +  3  =  ?",hints:["Combine both nets.","5 + 3."]},
+];
+let fishIdx=0;
+const FIRE_CHALLENGE={theme:'fire',cta:'Light it! 🔥',eyebrow:'Division Challenge',title:'🔥 Start a Fire',unit:'logs',
+  story:"Each log burns for <b>2 hours</b>. You want your fire to last <b>8 hours</b> through the night. How many logs do you need?",
+  diagram:"8 hours  ÷  2 hours per log  =  ?",answer:4,tolerance:0.001,
+  winStory:`Warm at last! 8 ÷ 2 = 4 logs. (−${FIRE_LOGS} 🪵) Your fire crackles through the night.`,
+  hints:["Division shares into equal groups. How many 2s fit in 8?","Count by 2s: 2, 4, 6, 8 — that took 4 logs."],
+  onSolve:()=>{ addResource('wood',-FIRE_LOGS); lightFire(); }};
+
+// --- proximity-triggered openers ---
+function openWater(){ if(!tools.jug){ showToast("You need a water jug 🪣 — craft one at the workbench 🛠️."); return; } const q=WATER_POOL[waterIdx++%WATER_POOL.length]; const after=+(inventory.water+q.answer).toFixed(1);
+  showChallengeModal(Object.assign({},q,{theme:'water',cta:'Fill up! 💧',eyebrow:'Volume Challenge',title:'💧 Collect Water',tolerance:0.001,winStory:`Splash! 💧 You fill <b>${q.answer} L</b> and sling it on your back. Haul it to 🏕️ camp!`,onSolve:()=>{ carrying.water+=q.answer; updateCarry(); }})); }
+function openCoconuts(){ if(!tools.basket){ showToast("You need a basket 🧺 — craft one at the workbench 🛠️."); return; } const q=COCO_POOL[cocoIdx++%COCO_POOL.length]; const after=inventory.food+q.answer; const fri=Math.floor(Math.random()*FRUIT_SPECIES.length), fsp=FRUIT_SPECIES[fri], fNew=!found.fruit.has(fri);
+  showChallengeModal(Object.assign({},q,{theme:'food',cta:'Gather! 🧺',eyebrow:'Multiplication Challenge',title:'🍃 Gather Fruit',unit:'fruits',tolerance:0.001,winStory:`${fNew?'🎉 NEW FIND! ':'Yum! 🧺 '}You gather <b>${q.answer} ${fsp.name}</b>! <span style="opacity:.7">${fsp.fact}</span> Carry your haul to 🏕️ camp.`,onSolve:()=>{ carrying.food+=q.answer; found.fruit.add(fri); updateCarry(); }})); }
+function openFishing(){ if(!tools.pole){ showToast("You need a fishing pole 🎣 — craft one at the workbench 🛠️."); return; } startFishing(); const q=FISH_POOL[fishIdx++%FISH_POOL.length]; const after=inventory.food+q.answer; const si=Math.floor(Math.random()*FISH_SPECIES.length), sp=FISH_SPECIES[si], isNew=!found.fish.has(si);
+  showChallengeModal(Object.assign({},q,{theme:'food',cta:'Cast line! 🎣',eyebrow:'Catch Challenge',title:'🎣 Catch Fish',unit:'fish',tolerance:0.001,winStory:`${isNew?'🎉 NEW CATCH! ':'Reel it in! 🎣 '}A <b>${sp.name}</b>! You bag <b>${q.answer}</b> fish. <span style="opacity:.7">${sp.fact}</span> Take your catch to 🏕️ camp.`,onSolve:()=>{ carrying.food+=q.answer; found.fish.add(si); caught=true; updateCarry(); }})); }
+function openFire(){ if(!tools.firestarter){ showToast("You need a fire drill 🔥 — craft one at the workbench 🛠️."); return; } if(fireLit){ showToast("Your fire's already blazing 🔥"); return; }
+  if(inventory.wood<FIRE_LOGS){ showToast(`A fire needs about ${FIRE_LOGS} 🪵 — you have ${inventory.wood}. Chop more at the grove 🌲!`); return; }
+  showChallengeModal(FIRE_CHALLENGE); }
+
+/* --------------------------- 6) MODAL ------------------------------- */
+const backdrop=document.getElementById('modal-backdrop'), card=document.getElementById('challenge-card');
+const el={eyebrow:document.getElementById('ch-eyebrow'),title:document.getElementById('ch-title'),story:document.getElementById('ch-story'),diagram:document.getElementById('ch-diagram'),input:document.getElementById('ch-input'),unit:document.getElementById('ch-unit'),check:document.getElementById('ch-check'),feedback:document.getElementById('ch-feedback'),winStory:document.getElementById('ch-winstory'),cont:document.getElementById('ch-continue')};
+const THEMES={ build:['#ff7a4d','#e85d31'], wood:['#2f8f5b','#1f6e42'], water:['#2f9bd4','#1f6e9e'], food:['#e0992f','#b5791f'], fire:['#e8552f','#b53a1f'] };
+let active=null,wrongCount=0;
+const modalOpen=()=>backdrop.classList.contains('open');
+function showChallengeModal(c){ active=c; wrongCount=0; hero.walkTarget=null;
+  card.classList.remove('solved');
+  const th=THEMES[c.theme]||THEMES.build; card.style.setProperty('--accent',th[0]); card.style.setProperty('--accent-deep',th[1]);
+  el.eyebrow.textContent=c.eyebrow; el.title.textContent=c.title; el.story.innerHTML=c.story; el.diagram.innerHTML=c.diagram||''; el.unit.textContent=c.unit||'';
+  el.check.textContent=c.cta||'Build it! 🔨'; el.feedback.textContent=''; el.feedback.className='feedback'; el.input.value='';
+  backdrop.classList.add('open'); setTimeout(()=>el.input.focus(),100); }
+function closeModal(){ backdrop.classList.remove('open'); active=null; if(fishing) stopFishing(); }
+function checkAnswer(){ if(!active)return; const v=parseFloat(el.input.value);
+  if(Number.isNaN(v)){ el.feedback.className='feedback hint'; el.feedback.textContent='Type a number first, then go!'; return; }
+  if(Math.abs(v-active.answer)<=(active.tolerance??0.001)){ el.feedback.className='feedback win'; el.feedback.textContent=`✅ Correct!  +${XP_PER_TASK} ⭐`; el.winStory.innerHTML=active.winStory; card.classList.add('solved'); inventory.xp+=XP_PER_TASK; if(typeof active.onSolve==='function')active.onSolve(); updateHUD(); }
+  else{ const h=active.hints[Math.min(wrongCount,active.hints.length-1)]; wrongCount++; el.feedback.className='feedback hint'; el.feedback.innerHTML='🤔 '+h; el.input.select(); } }
+el.check.addEventListener('click',checkAnswer);
+el.input.addEventListener('keydown',e=>{ if(e.key==='Enter')checkAnswer(); });
+el.cont.addEventListener('click',()=>{ closeModal(); if(reopenCraft){ reopenCraft=false; if(lastMenuFn) lastMenuFn(); } });
+function openChop(tree){ if(!tools.axe){ showToast("You need an axe 🪓 — craft one at the workbench 🛠️."); return; } const q=CHOP_POOL[chopIndex%CHOP_POOL.length]; chopIndex++;
+  showChallengeModal(Object.assign({},q,{theme:'wood',cta:'Chop! 🪓',eyebrow:'Chopping Challenge',title:'🌲 Chop Wood',unit:'logs',winStory:`Timber! 🪵 You hoist <b>${q.answer} logs</b> onto your back. Haul them to 🏕️ camp to stock up!`,onSolve:()=>{ carrying.wood+=q.answer; chopFX(tree); updateCarry(); }})); }
+function depositCarry(){ const w=carrying.wood,fo=carrying.food,wa=carrying.water; if(w+fo+wa<=0) return false; if(w)addResource('wood',w); if(fo){addResource('food',fo); collected.food+=fo;} if(wa){addResource('water',wa); collected.water=+(collected.water+wa).toFixed(2);} carrying.wood=carrying.food=carrying.water=0; updateCarry(); const p=[]; if(w)p.push(w+' 🪵'); if(fo)p.push(fo+' 🍎'); if(wa)p.push((+wa.toFixed(1))+' 💧'); showToast('🎒 Stocked up: '+p.join('  ')+' at camp!',3500); return true; }
+function setNeed(k,v){ NEEDS[k]=Math.max(0,Math.min(100,v)); }
+function updateNeeds(){ ['thirst','hunger','warmth'].forEach(k=>{ const el=document.getElementById('need-'+k); if(!el)return; const v=NEEDS[k], bar=el.querySelector('i'); bar.style.width=v.toFixed(1)+'%'; bar.style.background=v>50?'#5fbf6a':v>25?'#e6b23f':'#e8552f'; el.classList.toggle('low',v<=25); }); }
+function drink(){ if(NEEDS.thirst>=98){ showToast('💧 Not thirsty right now.',1600); return; } if(inventory.water<1){ showToast('💧 No water to drink — fill up at the 💧 spring and haul it to 🏕️ camp.',3200); return; } addResource('water',-1); setNeed('thirst',NEEDS.thirst+55); updateNeeds(); showToast('💧 Glug glug! You drink 1 L. Thirst quenched.',1800); }
+function eat(){ if(NEEDS.hunger>=98){ showToast('🍖 Not hungry right now.',1600); return; } if(inventory.food<1){ showToast('🍖 No food to eat — fish 🎣 or forage 🍃, then haul it to 🏕️ camp.',3200); return; } addResource('food',-1); setNeed('hunger',NEEDS.hunger+45); updateNeeds(); showToast('🍖 Yum! You eat a meal. Hunger eased.',1800); }
+function tickNeeds(dt){ if(collapsing)return; const nearFire=fireLit&&Math.hypot(hero.pos.x-FIRE.x,hero.pos.z-FIRE.z)<9;
+  if(needGrace>0){ needGrace-=dt; } else { setNeed('thirst',NEEDS.thirst-NEED_DRAIN.thirst*dt); setNeed('hunger',NEEDS.hunger-NEED_DRAIN.hunger*dt); setNeed('warmth', nearFire?NEEDS.warmth+WARM_RATE*dt:NEEDS.warmth-NEED_DRAIN.warmth*dt); }
+  ['thirst','hunger','warmth'].forEach(k=>{ if(NEEDS[k]<=30&&!warned[k]){ warned[k]=true; showToast(WARN[k],3600); } if(NEEDS[k]>45) warned[k]=false; });
+  for(const k of ['thirst','hunger','warmth']){ if(NEEDS[k]<=0){ collapse(k); break; } }
+  updateNeeds(); }
+function collapse(k){ if(collapsing)return; collapsing=true; hero.walkTarget=null; if(fishing)stopFishing(); const why={thirst:'too thirsty',hunger:'too hungry',warmth:'too cold'}[k]; const dropped=(carrying.wood+carrying.food+carrying.water)>0; carrying.wood=carrying.food=carrying.water=0; updateCarry(); document.getElementById('rest-msg').innerHTML=`You got <b>${why}</b> and had to rest. ☀️ A new dawn breaks over the island!<br><br>Your camp, tools, discoveries and stockpile are all safe.${dropped?' <span style="opacity:.75">(You dropped the materials you were carrying.)</span>':''}`; document.getElementById('rest').classList.add('open'); }
+document.getElementById('rest-go').addEventListener('click',()=>{ NEEDS.thirst=NEEDS.hunger=NEEDS.warmth=75; warned.thirst=warned.hunger=warned.warmth=false; needGrace=12; collapsing=false; document.getElementById('rest').classList.remove('open'); updateNeeds(); });
+document.getElementById('need-thirst').addEventListener('click',drink);
+document.getElementById('need-hunger').addEventListener('click',eat);
+function handleCampClick(){ depositCarry(); openCampMenu(); }
+
+/* ---------- CRAFTING: build tools before you can use them ---------- */
+const tools={axe:false,pole:false,jug:false,basket:false,firestarter:false};
+const TOOLS=[
+  {key:'axe',icon:'🪓',name:'Stone Axe',cost:0,unlocks:'chop wood',
+    challenge:{theme:'wood',cta:'Craft! 🪓',eyebrow:'Division Challenge',title:'🪓 Craft a Stone Axe',unit:'handles',
+      story:"Lash a sharp stone to a handle. You cut a <b>6 ft</b> branch into <b>2 ft</b> handles. How many handles can you make?",
+      diagram:"6 ft branch  ÷  2 ft each  =  ?",answer:3,tolerance:0.001,
+      winStory:"🪓 Axe crafted! Now you can chop wood at the grove 🌲.",
+      hints:["How many 2s fit in 6?","2, 4, 6 — that's 3 handles."]}},
+  {key:'pole',icon:'🎣',name:'Fishing Pole',cost:3,unlocks:'go fishing',
+    challenge:{theme:'water',cta:'Craft! 🎣',eyebrow:'Addition Challenge',title:'🎣 Craft a Fishing Pole',unit:'ft',
+      story:"Tie your line together: a <b>5 ft</b> main line plus a <b>2 ft</b> leader. How long is the whole line?",
+      diagram:"5 ft  +  2 ft  =  ?",answer:7,tolerance:0.001,
+      winStory:"🎣 Fishing pole ready! Head to the lagoon to fish.",
+      hints:["Join the two pieces — add their lengths.","5 and 2 more."]}},
+  {key:'jug',icon:'🪣',name:'Water Jug',cost:3,unlocks:'collect water',
+    challenge:{theme:'water',cta:'Craft! 🪣',eyebrow:'Volume Challenge',title:'🪣 Carve a Water Jug',unit:'cubic ft',
+      story:"Carve a box-shaped jug: <b>1 ft</b> long, <b>1 ft</b> wide, <b>2 ft</b> tall. How much water can it hold?",
+      diagram:"1 × 1 × 2  =  ?",answer:2,tolerance:0.001,
+      winStory:"🪣 Water jug carved! Now you can collect water at the spring 💧.",
+      hints:["Volume = length × width × height.","1 × 1 × 2 = 2 cubic ft."]}},
+  {key:'basket',icon:'🧺',name:'Gathering Basket',cost:2,unlocks:'gather coconuts',
+    challenge:{theme:'food',cta:'Craft! 🧺',eyebrow:'Perimeter Challenge',title:'🧺 Weave a Basket',unit:'in',
+      story:"Weave a square basket rim, <b>3 inches</b> per side. How many inches of reed go all the way around?",
+      diagram:"square · 3 in per side · perimeter = ?",answer:12,tolerance:0.001,
+      winStory:"🧺 Basket woven! Now you can gather coconuts 🥥.",
+      hints:["A square has 4 equal sides — add them up (or × 4).","3 + 3 + 3 + 3 = 12."]}},
+  {key:'firestarter',icon:'🔥',name:'Fire Drill',cost:2,unlocks:'start a fire',
+    challenge:{theme:'fire',cta:'Craft! 🔥',eyebrow:'Multiplication Challenge',title:'🔥 Make a Fire Drill',unit:'spins',
+      story:"Spin the drill <b>5</b> times each second for <b>6</b> seconds to make an ember. How many spins?",
+      diagram:"5 spins/sec  ×  6 sec  =  ?",answer:30,tolerance:0.001,
+      winStory:"🔥 Fire drill ready! Now you can start a fire at the pit.",
+      hints:["Equal groups → multiply: 6 groups of 5.","5, 10, 15, 20, 25, 30."]}},
+];
+const craftBackdrop=document.getElementById('craft-backdrop'), craftList=document.getElementById('craft-list');
+const journalBackdrop=document.getElementById('journal-backdrop'), journalList=document.getElementById('journal-list');
+const craftOpen=()=>craftBackdrop.classList.contains('open');
+const journalOpen=()=>journalBackdrop.classList.contains('open');
+const restOpen=()=>{const r=document.getElementById('rest');return !!r&&r.classList.contains('open');};
+const anyOpen=()=>modalOpen()||craftOpen()||journalOpen()||guideOpen()||restOpen()||sleeping;
+let reopenCraft=false, lastMenu=null;
+
+// ---- generic build menu (used by workbench AND camp decorating) ----
+const RES_ICON={wood:'🪵',food:'🍎',water:'💧'}; const RES_NAME={wood:'wood',food:'food',water:'water'};
+function costsText(c){ const k=Object.keys(c); return k.length? k.map(r=>`${+(+c[r]).toFixed(2)} ${RES_NAME[r]}`).join('  ') : 'free'; }
+function canAfford(c){ return Object.keys(c).every(r=>inventory[r]>=c[r]); }
+function spend(c){ Object.keys(c).forEach(r=>addResource(r,-c[r])); }
+function renderMenu(items){ craftList.innerHTML='';
+  items.forEach(it=>{ const owned=it.owned&&it.owned();
+    const xpOk = it.reqXp? inventory.xp>=it.reqXp : true;
+    const matOk = canAfford(it.costs||{});
+    const costStr = (it.reqXp?`⭐ ${it.reqXp}  `:'') + costsText(it.costs||{});
+    const row=document.createElement('div'); row.className='craft-row'+(owned?' built':'');
+    row.innerHTML=`<span class="ci">${it.icon}</span><span class="cn">${it.name}<i>${owned?(it.ownedLabel||'done'):it.desc}</i></span><span class="cc">${owned?'✓':costStr}</span>`;
+    const btn=document.createElement('button'); btn.className='craft-btn';
+    if(owned){ btn.textContent='Done'; btn.disabled=true; }
+    else if(!xpOk){ btn.textContent='Need ⭐ '+it.reqXp; btn.disabled=true; }
+    else if(!matOk){ btn.textContent='Need '+costsText(it.costs||{}); btn.disabled=true; }
+    else { btn.textContent='Build'; btn.onclick=()=>pickItem(it); }
+    row.appendChild(btn); craftList.appendChild(row); }); }
+function openMenu(def){ hero.walkTarget=null; keys.clear(); lastMenu=def;
+  document.getElementById('craft-eyebrow').textContent=def.eyebrow; document.getElementById('craft-title').textContent=def.title; document.getElementById('craft-sub').textContent=def.sub;
+  renderMenu(def.items); craftBackdrop.classList.add('open'); }
+function closeMenu(){ craftBackdrop.classList.remove('open'); }
+function pickItem(it){
+  if(it.instant){ it.act&&it.act(); if(lastMenuFn) lastMenuFn(); return; }
+  closeMenu();
+  showChallengeModal(Object.assign({},it.challenge,{onSolve:()=>{ spend(it.costs||{}); if(it.build)it.build(); if(it.own)it.own(); reopenCraft=true; }})); }
+document.getElementById('craft-close').addEventListener('click',closeMenu);
+
+// ---- WORKBENCH menu (tools) ----
+function openWorkbench(){ lastMenuFn=openWorkbench; openMenu({eyebrow:'Workbench',title:'🛠️ Craft Tools',sub:'Costs are in wood — chop a 🌲 tree with your axe, then haul the logs to 🏕️ camp to bank them.',
+  items:TOOLS.map(t=>({icon:t.icon,name:t.name,desc:'lets you '+t.unlocks,costs:t.cost?{wood:t.cost}:{},owned:()=>tools[t.key],own:()=>{tools[t.key]=true;},ownedLabel:'ready to use',challenge:t.challenge}))}); }
+
+// ---- CAMP decorations (Animal-Crossing camp growth) ----
+const decorOwned={};
+function popIn(g,scale=1){ g.scale.setScalar(0.01); const s=performance.now(); (function a(){ const t=Math.min((performance.now()-s)/500,1),e=1-Math.pow(1-t,3); g.scale.setScalar(scale*e); if(t<1)requestAnimationFrame(a); })(); }
+const DECOR=[
+  {key:'torch',icon:'🔥',name:'Tiki Torch',desc:'lights up camp',costs:{wood:2},
+    challenge:{theme:'fire',cta:'Build! 🔥',eyebrow:'Addition Challenge',title:'🔥 Tiki Torch',unit:'ft',story:"A torch is a <b>3 ft</b> pole on a <b>1 ft</b> base. How tall is it in total?",diagram:"3 ft + 1 ft = ?",answer:4,tolerance:0.001,winStory:"🔥 A warm torch glows by your camp!",hints:["Add the two parts.","3 and 1 more."]},
+    build:()=>{ const g=new THREE.Group(); const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.16,3,8),new THREE.MeshStandardMaterial({color:'#7a4a25'})); pole.position.y=1.5; pole.castShadow=true; g.add(pole); const fl=new THREE.Mesh(new THREE.ConeGeometry(0.4,0.9,8),new THREE.MeshStandardMaterial({color:'#ff8a2f',emissive:'#ff8a2f',emissiveIntensity:.9})); fl.position.y=3.3; g.add(fl); g.position.set(CAMP.x+6,0,CAMP.z-4); scene.add(g); popIn(g); }},
+  {key:'garden',icon:'🌻',name:'Garden Plot',desc:'a tidy 4×3 ft bed',costs:{wood:3},
+    challenge:{theme:'food',cta:'Plant! 🌻',eyebrow:'Area Challenge',title:'🌻 Garden Plot',unit:'sq ft',story:"Mark a garden bed <b>4 ft</b> long and <b>3 ft</b> wide. What area of soil will you plant?",diagram:"4 ft × 3 ft = ?",answer:12,tolerance:0.001,winStory:"🌻 A little garden blooms at camp!",hints:["Area = length × width.","4 × 3 = 12."]},
+    build:()=>{ const g=new THREE.Group(); const soil=new THREE.Mesh(new THREE.BoxGeometry(4,0.3,3),new THREE.MeshStandardMaterial({color:'#5a3a22'})); soil.position.y=0.15; g.add(soil); for(let i=0;i<6;i++){ const fl=new THREE.Mesh(new THREE.SphereGeometry(0.25,8,8),new THREE.MeshStandardMaterial({color:['#ffd23f','#ff6f91','#ffffff'][i%3]})); fl.position.set(-1.3+(i%3)*1.3,0.5,-0.7+Math.floor(i/3)*1.4); g.add(fl);} g.position.set(CAMP.x-7,0,CAMP.z+2); scene.add(g); popIn(g); }},
+  {key:'sign',icon:'🪧',name:'Signpost',desc:'marks your home',costs:{wood:2},
+    challenge:{theme:'build',cta:'Carve! 🪧',eyebrow:'Multiplication Challenge',title:'🪧 Signpost',unit:'nails',story:"You fix the sign with <b>2</b> rows of <b>3</b> nails. How many nails in all?",diagram:"2 × 3 = ?",answer:6,tolerance:0.001,winStory:'🪧 "HOME" — your camp has a name now!',hints:["2 groups of 3.","3 + 3 = 6."]},
+    build:()=>{ const g=new THREE.Group(); const post=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,2,8),new THREE.MeshStandardMaterial({color:'#7a4a25'})); post.position.y=1; post.castShadow=true; g.add(post); const board=new THREE.Mesh(new THREE.BoxGeometry(2,0.7,0.15),new THREE.MeshStandardMaterial({color:'#b5793f'})); board.position.y=1.8; board.castShadow=true; g.add(board); g.position.set(CAMP.x,0,CAMP.z+7); scene.add(g); popIn(g); }},
+  {key:'bench',icon:'🪑',name:'Log Bench',desc:'a place to rest',costs:{wood:3},
+    challenge:{theme:'wood',cta:'Build! 🪑',eyebrow:'Division Challenge',title:'🪑 Log Bench',unit:'legs',story:"Split an <b>8 ft</b> log into <b>2 ft</b> bench legs. How many legs?",diagram:"8 ÷ 2 = ?",answer:4,tolerance:0.001,winStory:"🪑 A comfy log bench — sit and enjoy the view!",hints:["How many 2s fit in 8?","2, 4, 6, 8 → 4."]},
+    build:()=>{ const g=new THREE.Group(); const seat=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,3,10),new THREE.MeshStandardMaterial({color:'#9c6b3f'})); seat.rotation.z=Math.PI/2; seat.position.y=0.7; seat.castShadow=true; g.add(seat); g.position.set(CAMP.x+7,0,CAMP.z+3); scene.add(g); popIn(g); }},
+];
+function openCampDecor(){ openMenu({eyebrow:'Your Camp',title:'🏕️ Build & Decorate',sub:'Make your camp feel like home.',
+  items:DECOR.map(d=>({icon:d.icon,name:d.name,desc:d.desc,costs:d.costs,owned:()=>!!decorOwned[d.key],own:()=>{decorOwned[d.key]=true;},ownedLabel:'built',challenge:d.challenge,build:d.build}))}); }
+
+// ---- CAMP LEVELS: a home that upgrades (Lvl 1 ditch → Lvl 6 villa) ----
+let lastMenuFn=null;
+const MAT={wood:new THREE.MeshStandardMaterial({color:'#b5793f',roughness:.9}),wood2:new THREE.MeshStandardMaterial({color:'#9c6b3f',roughness:.9}),thatch:new THREE.MeshStandardMaterial({color:'#a8a05a',roughness:1}),roof:new THREE.MeshStandardMaterial({color:'#b5623a',roughness:.9}),stone:new THREE.MeshStandardMaterial({color:'#8d8f94',roughness:1}),dark:new THREE.MeshStandardMaterial({color:'#5a3a22',roughness:1}),glass:new THREE.MeshStandardMaterial({color:'#bfe0ff',emissive:'#6fa8d0',emissiveIntensity:.25})};
+function B(w,h,d,m){ const x=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); x.castShadow=true; return x; }
+function lvDitch(g){
+  // mound of excavated earth around the rim
+  const rim=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.7,0.4,18),MAT.wood2); rim.position.y=0.0; rim.receiveShadow=true; g.add(rim);
+  // the scooped-out hollow (dark earth), sunk into the rim
+  const trench=new THREE.Mesh(new THREE.CylinderGeometry(2.0,1.7,0.4,18),MAT.dark); trench.position.y=0.12; g.add(trench);
+  // lumpy leaf bedding that fills the hollow
+  const leafCols=['#6f9f3f','#86a347','#b5913f','#9c7a35','#7faa4a','#c2a24a'];
+  function clump(x,y,z,s,flat){ const m=new THREE.Mesh(new THREE.IcosahedronGeometry(s,0),new THREE.MeshStandardMaterial({color:leafCols[Math.floor(Math.random()*leafCols.length)],roughness:1})); m.position.set(x,y,z); m.scale.y=flat?0.45:0.65; m.rotation.set(Math.random()*0.5,Math.random()*3,Math.random()*0.5); m.castShadow=true; g.add(m); return m; }
+  for(let i=0;i<14;i++){ const a=Math.random()*Math.PI*2, r=Math.random()*1.5; clump(Math.cos(a)*r,0.28,Math.sin(a)*r*0.8,0.42+Math.random()*0.3,true); }
+  // low leaf berm along the back as a windbreak
+  for(let i=0;i<7;i++){ clump(-1.9+i*0.62,0.45,-1.5+Math.random()*0.25,0.5+Math.random()*0.28,false); }
+  // a few gathered sticks laid over the bed
+  [[-0.5,-0.2,0.4],[0.6,-0.9,-0.35],[-1.2,-1.2,0.2]].forEach(([x,z,r])=>{ const st=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.09,3.2,6),MAT.wood2); st.rotation.z=Math.PI/2; st.rotation.y=r; st.position.set(x,0.5,z); st.castShadow=true; g.add(st); });
+}
+function lvLeanTo(g){ const floor=B(5,0.3,4,MAT.wood); floor.position.y=0.15; g.add(floor); [[-2.3,-1.8],[2.3,-1.8]].forEach(([x,z])=>{ const p=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,3.6,8),MAT.wood2); p.position.set(x,1.8,z); p.castShadow=true; g.add(p); }); const roof=B(5.4,0.2,5,MAT.thatch); roof.position.set(0,2.4,-0.3); roof.rotation.x=-0.5; g.add(roof); const bed=B(4,0.2,1.4,MAT.thatch); bed.position.set(0,0.35,1); g.add(bed); }
+function hutShell(g,W,D,H,wallMat){ const floor=B(W,0.4,D,MAT.wood2); floor.position.y=0.2; floor.receiveShadow=true; g.add(floor);
+  const back=B(W,H,0.3,wallMat); back.position.set(0,H/2+0.4,-D/2); g.add(back);
+  const left=B(0.3,H,D,wallMat); left.position.set(-W/2,H/2+0.4,0); g.add(left);
+  const right=left.clone(); right.position.x=W/2; g.add(right);
+  const door=2.4,seg=(W-door)/2; [-1,1].forEach(sn=>{ const fw=B(seg,H,0.3,wallMat); fw.position.set(sn*(door/2+seg/2),H/2+0.4,D/2); g.add(fw); });
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(Math.max(W,D)*0.8,3.2,4),MAT.roof); roof.rotation.y=Math.PI/4; roof.position.y=H+0.4+1.6; roof.castShadow=true; g.add(roof); return roof.position.y; }
+function lvHut(g){ hutShell(g,8,7,5,MAT.thatch); }
+function lvCabin(g){ hutShell(g,10,8,5.5,MAT.wood); const win=B(1.6,1.4,0.2,MAT.glass); win.position.set(-5+0.05,3.6,1.6); g.add(win); const ch=B(1,3.4,1,MAT.stone); ch.position.set(3.5,7,-2.6); g.add(ch); }
+function lvLodge(g){ hutShell(g,12,9,6,MAT.wood); const win=B(1.8,1.5,0.2,MAT.glass); win.position.set(-6+0.05,3.9,2); g.add(win);
+  [[-3.4,5.6],[3.4,5.6]].forEach(([x,z])=>{ const p=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,3.4,8),MAT.wood2); p.position.set(x,1.7,z); p.castShadow=true; g.add(p); });
+  const porch=B(9,0.3,3,MAT.roof); porch.position.set(0,3.5,5.8); g.add(porch); const step=B(9,0.3,1.4,MAT.wood2); step.position.set(0,0.15,5.3); g.add(step); const ch=B(1.1,4.2,1.1,MAT.stone); ch.position.set(4.5,7.7,-3); g.add(ch); }
+function lvVilla(g){ hutShell(g,14,10,6.5,MAT.wood); const win=B(2,1.6,0.2,MAT.glass); win.position.set(-7+0.05,4.2,2.4); g.add(win);
+  [[-4.2,6.2],[4.2,6.2]].forEach(([x,z])=>{ const p=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,3.6,8),MAT.wood2); p.position.set(x,1.8,z); p.castShadow=true; g.add(p); });
+  const porch=B(10,0.3,3.4,MAT.roof); porch.position.set(0,3.8,6.4); g.add(porch); const ch=B(1.2,4.6,1.2,MAT.stone); ch.position.set(5.5,8.3,-3.5); g.add(ch);
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,2.2,6),MAT.wood2); pole.position.set(0,11,0); g.add(pole); const flag=B(1.3,0.8,0.05,new THREE.MeshStandardMaterial({color:'#ff7a4d',side:THREE.DoubleSide})); flag.position.set(0.65,11.5,0); g.add(flag);
+  for(let i=0;i<18;i++){ const a=i/18*Math.PI*2; const fp=B(0.18,1,0.18,MAT.wood2); fp.position.set(Math.cos(a)*10.5,0.5,Math.sin(a)*8.5); g.add(fp); } }
+const CAMP_LEVELS=[
+  {name:'Open Clearing'},
+  {name:'Leaf Ditch', xp:0,   wood:0,  food:0,  build:lvDitch},
+  {name:'Lean-To',    xp:20,  wood:6,  food:0,  build:lvLeanTo},
+  {name:'Palm Hut',   xp:60,  wood:14, food:0,  build:lvHut},
+  {name:'Log Cabin',  xp:120, wood:24, food:8,  build:lvCabin},
+  {name:'Lodge',      xp:200, wood:36, food:16, build:lvLodge},
+  {name:'Island Villa',xp:320,wood:50, food:24, build:lvVilla},
+];
+const campStructure=new THREE.Group(); campStructure.position.set(CAMP.x,terrainH(CAMP.x,CAMP.z),CAMP.z); scene.add(campStructure);
+function clearGroup(g){ while(g.children.length){ const c=g.children.pop(); g.remove(c); if(c.geometry)c.geometry.dispose(); } }
+function setCampLevel(n){ clearGroup(campStructure); const lv=CAMP_LEVELS[n]; if(lv&&lv.build){ lv.build(campStructure); popIn(campStructure); } if(n>=1) campBox.visible=false; }
+function upgradeCosts(lv){ const c={}; if(lv.wood) c.wood=lv.wood; if(lv.food) c.food=lv.food; return c; }
+function doUpgrade(){ const next=CAMP_LEVELS[campLevel+1]; if(!next) return; const c=upgradeCosts(next);
+  if(inventory.xp<next.xp || !canAfford(c)) return;
+  spend(c); campLevel++; setCampLevel(campLevel); updateHUD(); checkAllGoals(); showToast(`🏕️ Camp upgraded to Lvl ${campLevel}: ${next.name}!`,4500); }
+function openCampMenu(){ lastMenuFn=openCampMenu; const next=CAMP_LEVELS[campLevel+1]; const items=[];
+  if(next){ items.push({icon:'⬆️',name:'Upgrade to '+next.name,desc:'your Level '+(campLevel+1)+' home',costs:upgradeCosts(next),reqXp:next.xp,instant:true,owned:()=>false,act:doUpgrade}); }
+  else items.push({icon:'🏝️',name:'Island Villa',desc:'your home is maxed out!',costs:{},owned:()=>true,ownedLabel:'max level',instant:true,act:()=>{}});
+  if(campLevel>=2) DECOR.forEach(d=>items.push({icon:d.icon,name:d.name,desc:d.desc,costs:d.costs,owned:()=>!!decorOwned[d.key],own:()=>{decorOwned[d.key]=true;},ownedLabel:'built',challenge:d.challenge,build:d.build}));
+  if(!foodFenceBuilt) items.push({icon:'🚧',name:'Food Fence',desc:'keeps hungry boars out',costs:{wood:6},owned:()=>foodFenceBuilt,ownedLabel:'built',challenge:fenceChallenge(),build:buildFence,own:()=>{foodFenceBuilt=true;}});
+  if(!roofBuilt) items.push({icon:'⛺',name:'Rain Roof',desc:'stay dry & warm in storms',costs:{wood:8},owned:()=>roofBuilt,ownedLabel:'built',challenge:roofChallenge(),build:buildRoof,own:()=>{roofBuilt=true;}});
+  if(!cacheBuilt) items.push({icon:'📦',name:'Raised Cache',desc:'climb-proof food store (stops raccoons)',costs:{wood:10},owned:()=>cacheBuilt,ownedLabel:'built',challenge:cacheChallenge(),build:buildCache,own:()=>{cacheBuilt=true;}});
+  items.push({icon:'🌙',name:'Sleep until dawn',desc:'pass the night — watch for boars & storms!',costs:{},instant:true,owned:()=>false,act:sleep});
+  openMenu({eyebrow:'Your Camp',title:`🏕️ Camp — Lvl ${campLevel}`,sub: next?`Next: ${next.name}  (needs ⭐ ${next.xp} XP)`:'Your island home is complete!',items}); }
+
+// ---- COLLECTIBLES + FIELD JOURNAL ----
+const FISH_SPECIES=[{icon:'🐠',name:'Clownfish',fact:'Hides safely inside sea anemones.'},{icon:'🐟',name:'Snapper',fact:'A reef fish that tastes great grilled.'},{icon:'🐡',name:'Pufferfish',fact:'Puffs up like a balloon when scared.'},{icon:'🐟',name:'Mackerel',fact:'Swims in huge silvery schools.'},{icon:'🐠',name:'Angelfish',fact:'Bright stripes warn that it is hard to eat.'}];
+const FRUIT_SPECIES=[{icon:'🥥',name:'Coconut',fact:'Its water keeps you hydrated.'},{icon:'🍌',name:'Banana',fact:'Loaded with quick energy.'},{icon:'🥭',name:'Mango',fact:'Bursting with vitamin C.'},{icon:'🍈',name:'Papaya',fact:'Sweet and easy on the stomach.'},{icon:'🫐',name:'Berries',fact:'Tiny but full of vitamins.'}];
+const found={fish:new Set(),fruit:new Set()};
+function renderJournal(){ journalList.innerHTML='';
+  [['fish','Fish',FISH_SPECIES],['fruit','Fruit',FRUIT_SPECIES]].forEach(([k,label,list])=>{
+    const h=document.createElement('div'); h.className='jrnl-group'; h.textContent=`${label} — ${found[k].size}/${list.length}`; journalList.appendChild(h);
+    list.forEach((sp,i)=>{ const got=found[k].has(i); const row=document.createElement('div'); row.className='jrnl-row'+(got?' found':'');
+      row.innerHTML=got?`<span class="ji">${sp.icon}</span><span class="jn"><b>${sp.name}</b><i>${sp.fact}</i></span>`:`<span class="ji">❓</span><span class="jn"><b>???</b><i>Not discovered yet</i></span>`;
+      journalList.appendChild(row); }); }); }
+function openJournal(){ hero.walkTarget=null; renderJournal(); journalBackdrop.classList.add('open'); }
+document.getElementById('journal-btn').addEventListener('click',openJournal);
+document.getElementById('journal-close').addEventListener('click',()=>journalBackdrop.classList.remove('open'));
+
+// ---- SURVIVAL GUIDE: ordered, self-checking how-to-survive book ----
+const GUIDE=[
+  {t:'Build a Shelter', how:'On a survival island, shelter comes first — it keeps you safe and rested.', go:'Go to your 🏕️ camp and build your first shelter (a leaf ditch, then a lean-to).', done:()=>campLevel>=1},
+  {t:'Find Food', how:"You can't last long hungry — catch fish or gather fruit.", go:'Craft a 🎣 pole or 🧺 basket at the 🛠️ workbench, then fish the pond or forage the 🍃 grove.', done:()=>collected.food>0},
+  {t:'Collect Water', how:'Fresh water is vital — you can only go a few days without it.', go:'Craft a 🪣 water jug at the workbench, then fill up at the 💧 spring.', done:()=>collected.water>0},
+  {t:'Make Fire', how:'Fire means warmth, cooked food, and safety through the night.', go:'Craft a 🔥 fire drill, chop 🪵 wood, then light the 🔥 fire pit.', done:()=>fireLit},
+  {t:'Upgrade Your Camp', how:'A sturdier home shelters you better. Earn XP by surviving, then rebuild bigger.', go:'Gather to earn ⭐ XP & 🪵 wood, then upgrade to a real hut at 🏕️ camp (Level 3).', done:()=>campLevel>=3},
+  {t:'Grow a Garden', how:'Once settled, grow your own food so you never go hungry again.', go:'Open your 🏕️ camp menu and build the 🌻 Garden Plot.', done:()=>!!decorOwned.garden},
+  {t:'Build Your Island Home', how:"You've mastered survival — now make this island truly yours.", go:'Keep earning XP & materials to reach the 🏝️ Island Villa (Level 6).', done:()=>campLevel>=6},
+];
+const guideBackdrop=document.getElementById('guide-backdrop'), guideList=document.getElementById('guide-list');
+const guideOpen=()=>guideBackdrop.classList.contains('open');
+function renderGuide(){ guideList.innerHTML=''; let nextFound=false;
+  GUIDE.forEach((st,i)=>{ const done=st.done(); const isNext=!done&&!nextFound; if(isNext)nextFound=true;
+    const row=document.createElement('div'); row.className='guide-row'+(done?' gdone':'')+(isNext?' gnext':'');
+    row.innerHTML=`<span class="gs">${done?'✓':(isNext?'➜':(i+1))}</span><span class="gc"><b>Step ${i+1}: ${st.t}</b><i>${st.how}</i><u>${st.go}</u></span>`;
+    guideList.appendChild(row); }); }
+function openGuide(){ hero.walkTarget=null; renderGuide(); guideBackdrop.classList.add('open'); document.getElementById('guide-btn').classList.remove('has-new'); }
+document.getElementById('guide-btn').addEventListener('click',openGuide);
+document.getElementById('guide-close').addEventListener('click',()=>guideBackdrop.classList.remove('open'));
+
+/* --------------------------- 7) BUILD ------------------------------- */
+function buildFloor(){ const floor=new THREE.Group(); const planks=5,gap=0.08,pw=(SHELTER_D-gap*(planks-1))/planks;
+  for(let i=0;i<planks;i++){ const p=new THREE.Mesh(new THREE.BoxGeometry(SHELTER_W,0.4,pw),new THREE.MeshStandardMaterial({color:i%2?'#b5793f':'#a96d36',roughness:.9}));
+    p.position.set(0,0.2,-SHELTER_D/2+pw/2+i*(pw+gap)); p.castShadow=p.receiveShadow=true; floor.add(p); }
+  floor.position.set(CAMP.x,0,CAMP.z); floor.scale.setScalar(0.01); scene.add(floor); floorBuilt=true;
+  const s=performance.now(); (function grow(){ const t=Math.min((performance.now()-s)/600,1),e=1-Math.pow(1-t,3); floor.scale.setScalar(e); campBox.scale.setScalar(1-e); if(t<1)requestAnimationFrame(grow); else campBox.visible=false; })(); }
+
+function buildWalls(){ const g=new THREE.Group(); const H=6, t=0.3;
+  const wallMat=new THREE.MeshStandardMaterial({color:'#a8a05a',roughness:1});      // dried palm thatch
+  const postMat=new THREE.MeshStandardMaterial({color:'#7a4a25',roughness:1});
+  [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([sx,sz])=>{ const post=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,H+0.6,8),postMat);
+    post.position.set(sx*(SHELTER_W/2-0.2),(H+0.6)/2,sz*(SHELTER_D/2-0.2)); post.castShadow=true; g.add(post); });
+  const back=new THREE.Mesh(new THREE.BoxGeometry(SHELTER_W,H,t),wallMat); back.position.set(0,H/2,-SHELTER_D/2); back.castShadow=true; g.add(back);
+  const left=new THREE.Mesh(new THREE.BoxGeometry(t,H,SHELTER_D),wallMat); left.position.set(-SHELTER_W/2,H/2,0); left.castShadow=true; g.add(left);
+  const right=left.clone(); right.position.x=SHELTER_W/2; g.add(right);
+  const door=2.4, segW=(SHELTER_W-door)/2;                                          // front wall split by a doorway
+  [-1,1].forEach(sgn=>{ const fw=new THREE.Mesh(new THREE.BoxGeometry(segW,H,t),wallMat); fw.position.set(sgn*(door/2+segW/2),H/2,SHELTER_D/2); fw.castShadow=true; g.add(fw); });
+  g.position.set(CAMP.x,0.55,CAMP.z); g.scale.y=0.01; scene.add(g);
+  const s=performance.now(); (function rise(){ const t2=Math.min((performance.now()-s)/750,1),e=1-Math.pow(1-t2,3); g.scale.y=e; if(t2<1)requestAnimationFrame(rise); })(); }
+
+function buildRoof(){ const wallTop=0.55+6; const g=new THREE.Group();
+  const roofMat=new THREE.MeshStandardMaterial({color:'#b5623a',roughness:1});        // sun-baked thatch
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(5.8,3.2,4),roofMat);               // 4-sided pyramid covers 8x7 with eaves
+  roof.rotation.y=Math.PI/4; roof.position.y=1.6; roof.castShadow=true; g.add(roof);
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,1.6,6),new THREE.MeshStandardMaterial({color:'#5a4634'})); pole.position.y=3.2+0.8; g.add(pole);
+  const flag=new THREE.Mesh(new THREE.PlaneGeometry(1,0.6),new THREE.MeshStandardMaterial({color:'#ff7a4d',side:THREE.DoubleSide})); flag.position.set(0.5,3.2+1.2,0); g.add(flag);
+  const rest=wallTop, hi=wallTop+5;
+  g.position.set(CAMP.x,hi,CAMP.z); g.scale.setScalar(0.6); scene.add(g);             // start high, settle down onto the walls
+  const s=performance.now(); (function drop(){ const t=Math.min((performance.now()-s)/700,1),e=1-Math.pow(1-t,3);
+    g.position.y=hi+(rest-hi)*e; g.scale.setScalar(0.6+0.4*e); if(t<1)requestAnimationFrame(drop); })(); }
+
+/* -------------------- 8) MOVEMENT + INTERACTION --------------------- */
+hero.pos=new THREE.Vector3(0,0,34); hero.walkTarget=null; hero.facing=Math.PI; hero.phase=0; hero.speed=14;
+hero.group.position.copy(hero.pos); hero.group.rotation.y=hero.facing;
+
+const keys=new Set();
+addEventListener('keydown',e=>{ if(anyOpen())return; const k=e.key.toLowerCase(); if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k)){ keys.add(k); e.preventDefault(); } });
+addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+
+const raycaster=new THREE.Raycaster(), pointer=new THREE.Vector2();
+let down=false,dragging=false,lastX=0,lastY=0,downX=0,downY=0,pinchDist=0;
+function pDown(e){ if(anyOpen())return; down=true; dragging=false; lastX=downX=e.clientX; lastY=downY=e.clientY; }
+function pMove(e){ if(!down)return; const dx=e.clientX-lastX,dy=e.clientY-lastY;
+  if(Math.abs(e.clientX-downX)+Math.abs(e.clientY-downY)>6)dragging=true;
+  orbit.theta-=dx*0.005; orbit.phi-=dy*0.005; lastX=e.clientX; lastY=e.clientY; }
+let chopTarget=null;
+function pUp(e){ if(!down)return; down=false; if(dragging||anyOpen())return;
+  pointer.x=(e.clientX/innerWidth)*2-1; pointer.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+  const ph=raycaster.intersectObjects([hbWood,hbFood,hbWater])[0];
+  if(ph){ const n=ph.object.name; showToast(n==='pile_wood'?`🪵 Wood stockpile: ${inventory.wood} logs`:n==='pile_food'?`🍎 Food stockpile: ${inventory.food}`:`💧 Water stored: ${(+inventory.water.toFixed(1))} L`,3000); return; }
+  const th=raycaster.intersectObjects(choppables)[0];
+  if(th){ let g=th.object; while(g&&!g.userData.isTree) g=g.parent;
+    if(g){ const d=Math.hypot(hero.pos.x-g.position.x,hero.pos.z-g.position.z);
+      if(d<=6.5){ chopTarget=null; openChop(g); }
+      else{ const ang=Math.atan2(hero.pos.x-g.position.x,hero.pos.z-g.position.z); hero.walkTarget=new THREE.Vector3(g.position.x+Math.sin(ang)*4.2,0,g.position.z+Math.cos(ang)*4.2); chopTarget=g; showToast('🌲 Heading over to chop that tree…',1400); }
+      keys.clear(); return; } }
+  const hit=raycaster.intersectObject(terrain)[0];
+  if(hit){ chopTarget=null; const p=hit.point.clone(); const d=Math.hypot(p.x,p.z); if(d>WALK_R){ p.x*=WALK_R/d; p.z*=WALK_R/d; } hero.walkTarget=new THREE.Vector3(p.x,0,p.z); keys.clear(); } }
+canvas.addEventListener('pointerdown',pDown); canvas.addEventListener('pointermove',pMove); canvas.addEventListener('pointerup',pUp); canvas.addEventListener('pointercancel',()=>down=false);
+canvas.addEventListener('wheel',e=>{ orbit.radius+=e.deltaY*0.02; e.preventDefault(); },{passive:false});
+canvas.addEventListener('touchmove',e=>{ if(e.touches.length===2){ const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); if(pinchDist)orbit.radius+=(pinchDist-d)*0.05; pinchDist=d; e.preventDefault(); } },{passive:false});
+canvas.addEventListener('touchend',()=>pinchDist=0);
+
+const toastEl=document.getElementById('toast'); let toastTimer=null;
+function showToast(m,ms=3800){ toastEl.innerHTML=m; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove('show'),ms); }
+showToast("Craft tools at the 🛠️ workbench, then gather to earn ⭐XP &amp; materials. Visit 🏕️ camp to upgrade your home (Lvl 1→6)! Watch your 💧🍖🔥 meters — tap 💧/🍖 to drink &amp; eat, and warm up by the fire. Tap 📔 for discoveries.",12000);
+
+// proximity zones — entering triggers the action once, until you leave again
+const zones=[{cx:GROVE.x,cz:GROVE.z,r:6.5,action:openChop,armed:true},{cx:CAMP.x,cz:CAMP.z,r:7,action:handleCampClick,armed:true},
+  {cx:SPRING.x,cz:SPRING.z,r:6,action:openWater,armed:true},{cx:COCO.x,cz:COCO.z,r:6,action:openCoconuts,armed:true},
+  {cx:FISH.x,cz:FISH.z,r:6,action:openFishing,armed:true},{cx:FIRE.x,cz:FIRE.z,r:6,action:openFire,armed:true},
+  {cx:BENCH.x,cz:BENCH.z,r:6,action:openWorkbench,armed:true}];
+function checkZones(){ if(anyOpen())return; for(const z of zones){ const d=Math.hypot(hero.pos.x-z.cx,hero.pos.z-z.cz);
+  if(d<z.r){ if(z.armed){ z.armed=false; z.action(); } } else if(d>z.r+2){ z.armed=true; } } }
+function lerpAngle(a,b,t){ let d=((b-a+Math.PI)%(Math.PI*2))-Math.PI; return a+d*t; }
+
+function updateHero(dt){
+  let mvx=0,mvz=0;
+  // keyboard (camera-relative so "up" always walks into the scene)
+  let ix=0,iz=0;
+  if(keys.has('arrowup')||keys.has('w'))iz-=1;
+  if(keys.has('arrowdown')||keys.has('s'))iz+=1;
+  if(keys.has('arrowleft')||keys.has('a'))ix-=1;
+  if(keys.has('arrowright')||keys.has('d'))ix+=1;
+  if(ix||iz){ hero.walkTarget=null; chopTarget=null;
+    const fwd=new THREE.Vector3().subVectors(orbit.target,camera.position); fwd.y=0; fwd.normalize();
+    const right=new THREE.Vector3(fwd.z,0,-fwd.x);
+    mvx=right.x*ix+fwd.x*(-iz); mvz=right.z*ix+fwd.z*(-iz);
+    const l=Math.hypot(mvx,mvz)||1; mvx/=l; mvz/=l;
+  } else if(hero.walkTarget){
+    const dx=hero.walkTarget.x-hero.pos.x, dz=hero.walkTarget.z-hero.pos.z, d=Math.hypot(dx,dz);
+    if(d>0.2){ mvx=dx/d; mvz=dz/d; } else { hero.walkTarget=null; if(chopTarget){ const g=chopTarget; chopTarget=null; openChop(g); } }
+  }
+  const moving=(mvx||mvz);
+  if(moving && !anyOpen()){
+    hero.pos.x+=mvx*hero.speed*dt; hero.pos.z+=mvz*hero.speed*dt;
+    const d=Math.hypot(hero.pos.x,hero.pos.z); if(d>WALK_R){ hero.pos.x*=WALK_R/d; hero.pos.z*=WALK_R/d; }
+    hero.facing=lerpAngle(hero.facing,Math.atan2(mvx,mvz),0.2);
+    hero.phase+=dt*10;
+  } else { hero.phase+=dt*0; }
+  const gy=terrainH(hero.pos.x,hero.pos.z); hero.group.position.set(hero.pos.x,gy,hero.pos.z);
+  hero.group.rotation.y=hero.facing;
+  // limb swing
+  const swing=moving?Math.sin(hero.phase)*0.6:hero.armL.rotation.x*0.8;
+  hero.legL.rotation.x=swing; hero.legR.rotation.x=-swing;
+  hero.armL.rotation.x=-swing; hero.armR.rotation.x=swing;
+  if(fishing){ hero.armR.rotation.x=-1.2; hero.armR.rotation.z=0; }
+  hero.group.position.y=gy+(moving?Math.abs(Math.sin(hero.phase))*0.08:0);
+  // camera follows the explorer
+  orbit.target.lerp(new THREE.Vector3(hero.pos.x,gy+1.6,hero.pos.z),0.08);
+  checkZones();
+}
+
+/* --------------------------- 9) LOOP -------------------------------- */
+function resize(){ renderer.setSize(innerWidth,innerHeight); camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize',resize); resize();
+const clock=new THREE.Clock(); let elapsed=0;
+/* --------------------------- DAY / NIGHT + WILDLIFE --------------------------- */
+let nightLevel=0, nightTarget=0;
+function applyNight(t){
+  sun.intensity = 1.1*(1-0.9*t);
+  hemi.intensity = 0.9*(1-0.78*t);
+  const dC=[0.749,0.914,0.949], nC=[0.05,0.07,0.17];
+  scene.background.setRGB(dC[0]+(nC[0]-dC[0])*t, dC[1]+(nC[1]-dC[1])*t, dC[2]+(nC[2]-dC[2])*t);
+  scene.fog.color.copy(scene.background);
+}
+function updateNight(dt){ if(Math.abs(nightLevel-nightTarget)>0.001){ nightLevel+=(nightTarget-nightLevel)*Math.min(1,dt*1.4); applyNight(nightLevel); } }
+function updateDayBadge(){ const e=document.getElementById('day-badge'); if(e) e.textContent='Day '+day; }
+
+// ---- food fence (perimeter defense) ----
+const FENCE_POOL=[
+  {eyebrow:'Perimeter • Gr 4',story:"Build a food pen <b>6 ft</b> long and <b>4 ft</b> wide. How many feet of fence to go all the way around it?",diagram:"6 + 4 + 6 + 4 = ?   (all four sides)",answer:20,tolerance:0.001,hints:["Perimeter is the distance all the way around.","Add all four sides: 6 + 4 + 6 + 4.","Or 2 × (6 + 4) = 2 × 10 = 20."]},
+  {eyebrow:'Perimeter • Gr 4',story:"Your pen is a square with <b>5 ft</b> sides. What is the perimeter (all four sides added up)?",diagram:"5 + 5 + 5 + 5 = ?",answer:20,tolerance:0.001,hints:["A square has 4 equal sides.","Add 5 four times.","Or 4 × 5 = 20."]},
+  {eyebrow:'Perimeter • Gr 4',story:"A pen measures <b>7 ft</b> by <b>3 ft</b>. How much fencing goes around the whole thing?",diagram:"2 × (7 + 3) = ?",answer:20,tolerance:0.001,hints:["Add one long and one short side first: 7 + 3 = 10.","Then double it, because each length appears twice.","2 × 10 = 20."]},
+  {eyebrow:'Decimals • Gr 5 preview',story:"This pen is <b>5.5 ft</b> long and <b>4 ft</b> wide. What is the perimeter?",diagram:"2 × (5.5 + 4) = ?",answer:19,tolerance:0.001,hints:["Add a long side and a short side: 5.5 + 4 = 9.5.","Double it for both pairs of sides.","2 × 9.5 = 19."]},
+  {eyebrow:'Multi-step • Gr 5 preview',story:"Your fence needs a <b>20 ft</b> perimeter. Each fence panel is <b>4 ft</b> long. How many panels do you need?",diagram:"20 ÷ 4 = ?",answer:5,tolerance:0.001,unit:'panels',hints:["How many 4 ft panels fit into 20 ft?","Count by 4s: 4, 8, 12, 16, 20.","20 ÷ 4 = 5 panels."]},
+];
+let fenceIdx=0, foodFence=null;
+function fenceChallenge(){ const q=FENCE_POOL[fenceIdx++ % FENCE_POOL.length]; return Object.assign({theme:'wood',cta:'Build Fence! 🚧',title:'🚧 Food Fence',unit:'ft',winStory:'🚧 A sturdy fence rings your food. Boars can grunt all they like — they are not getting in!'}, q); }
+function buildFence(){ foodFenceBuilt=true; if(foodFence) scene.remove(foodFence);
+  foodFence=new THREE.Group();
+  const postM=new THREE.MeshStandardMaterial({color:'#7a4a25',roughness:1}), railM=new THREE.MeshStandardMaterial({color:'#9c6b3f',roughness:1});
+  const w=5.2,d=4.4,nx=5,nz=4;
+  function post(x,z){ const p=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.14,1.4,7),postM); p.position.set(x,0.7,z); p.castShadow=true; foodFence.add(p); }
+  for(let i=0;i<=nx;i++){ post(-w/2+i*(w/nx),-d/2); post(-w/2+i*(w/nx),d/2); }
+  for(let j=1;j<nz;j++){ post(-w/2,-d/2+j*(d/nz)); post(w/2,-d/2+j*(d/nz)); }
+  [0.5,1.0].forEach(h=>{ const a=new THREE.Mesh(new THREE.BoxGeometry(w,0.12,0.12),railM); a.position.set(0,h,-d/2); foodFence.add(a); const b=a.clone(); b.position.z=d/2; foodFence.add(b); const c=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.12,d),railM); c.position.set(-w/2,h,0); foodFence.add(c); const e=c.clone(); e.position.x=w/2; foodFence.add(e); });
+  foodFence.position.set(pileFood.position.x, terrainH(pileFood.position.x,pileFood.position.z), pileFood.position.z); scene.add(foodFence); popIn(foodFence); }
+
+// ---- animals (boar = ground raider; raccoon = climber) ----
+let boar=null, boarStole=0, boarHad=0;
+// raised cache (volume defense — the only thing that stops a climbing raccoon)
+const CACHE_POOL=[
+  {eyebrow:'Volume • Gr 5 preview',story:"Build a storage box <b>3 ft</b> long, <b>2 ft</b> wide, and <b>2 ft</b> tall. How many cubic feet can it hold?",diagram:"3 × 2 × 2 = ?   cubic ft",answer:12,tolerance:0.001,unit:'cu ft',hints:["Volume = length × width × height.","Floor first: 3 × 2 = 6.","Then × height: 6 × 2 = 12."]},
+  {eyebrow:'Volume • Gr 5 preview',story:"Your cache box is <b>4 ft</b> × <b>3 ft</b> × <b>2 ft</b>. What is its volume?",diagram:"4 × 3 × 2 = ?",answer:24,tolerance:0.001,unit:'cu ft',hints:["Multiply all three numbers.","4 × 3 = 12.","12 × 2 = 24."]},
+  {eyebrow:'Volume • Gr 5 preview',story:"A cube-shaped crate is <b>3 ft</b> on every edge. What is its volume?",diagram:"3 × 3 × 3 = ?",answer:27,tolerance:0.001,unit:'cu ft',hints:["A cube is side × side × side.","3 × 3 = 9.","9 × 3 = 27."]},
+  {eyebrow:'Multiply • Gr 4',story:"Your cache has <b>2</b> shelves. Each shelf holds <b>6</b> food. How many fit in all?",diagram:"2 × 6 = ?",answer:12,tolerance:0.001,unit:'food',hints:["Two equal groups of 6.","2 × 6.","That is 12."]},
+  {eyebrow:'Multi-step • Gr 5 preview',story:"A cache is <b>2 ft</b> × <b>2 ft</b> × <b>3 ft</b>. Each food crate takes <b>2 cubic ft</b>. How many crates fit?",diagram:"(2 × 2 × 3) ÷ 2 = ?",answer:6,tolerance:0.001,unit:'crates',hints:["Volume first: 2 × 2 × 3 = 12 cu ft.","Each crate is 2 cu ft.","12 ÷ 2 = 6 crates."]},
+];
+let cacheIdx=0, cacheBuilt=false, cacheMeshG=null;
+function cacheChallenge(){ const q=CACHE_POOL[cacheIdx++ % CACHE_POOL.length]; return Object.assign({theme:'food',cta:'Build Cache! 📦',title:'📦 Raised Cache',unit:'cu ft',winStory:'📦 Your food now sits high on stilts in a sealed cache. Climbers like raccoons are locked out!'}, q); }
+function buildCache(){ cacheBuilt=true; if(cacheMeshG) scene.remove(cacheMeshG);
+  cacheMeshG=new THREE.Group();
+  const legM=new THREE.MeshStandardMaterial({color:'#6f4a28',roughness:1}), boxM=new THREE.MeshStandardMaterial({color:'#b5824a',roughness:1}), roofM=new THREE.MeshStandardMaterial({color:'#8a5a32',roughness:1});
+  const h=2.0,bw=2.2,bd=1.8;
+  [[-bw/2,-bd/2],[bw/2,-bd/2],[-bw/2,bd/2],[bw/2,bd/2]].forEach(([x,z])=>{ const l=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.12,h,6),legM); l.position.set(x,h/2,z); l.castShadow=true; cacheMeshG.add(l); });
+  const box=new THREE.Mesh(new THREE.BoxGeometry(bw+0.3,1.1,bd+0.3),boxM); box.position.y=h+0.55; box.castShadow=true; cacheMeshG.add(box);
+  const lid=new THREE.Mesh(new THREE.ConeGeometry((bw+0.5)*0.62,0.7,4),roofM); lid.rotation.y=Math.PI/4; lid.position.y=h+1.45; lid.castShadow=true; cacheMeshG.add(lid);
+  const cx=pileFood.position.x-3.5, cz=pileFood.position.z; cacheMeshG.position.set(cx, terrainH(cx,cz), cz); scene.add(cacheMeshG); popIn(cacheMeshG); }
+
+function makeRaccoon(){ const g=new THREE.Group();
+  const fur=new THREE.MeshStandardMaterial({color:'#8d949c',roughness:1}), dark=new THREE.MeshStandardMaterial({color:'#33363b',roughness:1}), pale=new THREE.MeshStandardMaterial({color:'#d9dde2',roughness:1});
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.55,12,10),fur); body.scale.set(1.4,0.85,0.9); body.position.y=0.7; body.castShadow=true; g.add(body);
+  const head=new THREE.Group(); head.position.set(0.85,0.85,0); g.add(head);
+  const skull=new THREE.Mesh(new THREE.SphereGeometry(0.4,10,9),fur); skull.scale.set(1,0.95,0.95); skull.castShadow=true; head.add(skull);
+  const mask=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.18,0.66),dark); mask.position.set(0.22,0.05,0); head.add(mask);
+  const snout=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.4,8),dark); snout.rotation.z=-Math.PI/2; snout.position.set(0.5,-0.02,0); head.add(snout);
+  [[0.16],[-0.16]].forEach(([z])=>{ const e=new THREE.Mesh(new THREE.SphereGeometry(0.05,7,7),pale); e.position.set(0.34,0.07,z); head.add(e); });
+  [[-0.15,0.22],[-0.15,-0.22]].forEach(([x,z])=>{ const ear=new THREE.Mesh(new THREE.ConeGeometry(0.13,0.22,5),fur); ear.position.set(x,0.38,z); head.add(ear); });
+  const legs=[]; [[-0.45,0.3],[-0.45,-0.3],[0.4,0.3],[0.4,-0.3]].forEach(([x,z])=>{ const l=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.09,0.6,7),dark); l.position.set(x,0.3,z); l.castShadow=true; g.add(l); legs.push(l); });
+  for(let i=0;i<5;i++){ const seg=new THREE.Mesh(new THREE.SphereGeometry(0.16-i*0.012,8,7), i%2?dark:pale); seg.position.set(-0.7-i*0.16,0.8+i*0.12,0); g.add(seg); }
+  g.scale.setScalar(0.8);
+  return {group:g, legs, head};
+}
+const ANIMALS={
+  boar:{ spawn:{x:30,z:30}, speed:5.5, leaveSpeed:10, stealMin:3, stealVar:3, backY:1.7,
+    safe:()=>foodFenceBuilt||fireLit||cacheBuilt,
+    safeMsg:()=>cacheBuilt?'🐗 Your food sits high in the cache — the boar cannot reach it and leaves!':(foodFenceBuilt?'🐗 The boar bumps your fence, grunts, and gives up!':'🐗 The boar shies from your firelight and trots away!'),
+    raidMsg:'🐗 A wild boar is rooting through your food pile!', noFoodMsg:'🐗 The boar snuffles around but finds no food to take.' },
+  raccoon:{ spawn:{x:-8,z:54}, speed:7, leaveSpeed:11, stealMin:2, stealVar:2, backY:1.2,
+    safe:()=>cacheBuilt,
+    safeMsg:()=>'🦝 The raccoon claws at your raised cache but cannot climb in. Foiled!',
+    raidMsg:'🦝 A sneaky raccoon raids your food — a fence and fire do not stop a climber!', noFoodMsg:'🦝 The raccoon paws around but finds no food to take.' },
+};
+function makeBoar(){ const g=new THREE.Group();
+  const hide=new THREE.MeshStandardMaterial({color:'#5a4632',roughness:1}), dark=new THREE.MeshStandardMaterial({color:'#3c2f22',roughness:1}), tusk=new THREE.MeshStandardMaterial({color:'#f3ecd6',roughness:.6});
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.8,12,10),hide); body.scale.set(1.5,0.85,0.95); body.position.y=1.0; body.castShadow=true; g.add(body);
+  for(let i=0;i<5;i++){ const br=new THREE.Mesh(new THREE.ConeGeometry(0.12,0.4,5),dark); br.position.set(0.5-i*0.28,1.55,0); br.castShadow=true; g.add(br); }
+  const head=new THREE.Group(); head.position.set(1.15,1.05,0); g.add(head);
+  const skull=new THREE.Mesh(new THREE.SphereGeometry(0.55,10,9),hide); skull.scale.set(1,0.95,0.9); skull.castShadow=true; head.add(skull);
+  const snout=new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.32,0.5,9),dark); snout.rotation.z=Math.PI/2; snout.position.set(0.55,-0.05,0); head.add(snout);
+  [[0.62,0.18],[0.62,-0.18]].forEach(([x,z])=>{ const t=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.3,5),tusk); t.position.set(x,-0.18,z); t.rotation.z=-0.5; head.add(t); });
+  [[0.3,0.22],[0.3,-0.22]].forEach(([x,z])=>{ const e=new THREE.Mesh(new THREE.SphereGeometry(0.08,7,7),dark); e.position.set(x,0.12,z); head.add(e); });
+  [[-0.25,0.32],[-0.25,-0.32]].forEach(([x,z])=>{ const ear=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.32,5),hide); ear.position.set(x,0.45,z); head.add(ear); });
+  const legs=[]; [[-0.7,0.45],[-0.7,-0.45],[0.6,0.45],[0.6,-0.45]].forEach(([x,z])=>{ const l=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.13,0.95,7),dark); l.position.set(x,0.48,z); l.castShadow=true; g.add(l); legs.push(l); });
+  const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.5,5),dark); tail.position.set(-1.25,1.15,0); tail.rotation.z=0.7; g.add(tail);
+  g.scale.setScalar(0.85);
+  return {group:g, legs, head};
+}
+function spawnAnimal(type){ if(boar) return; const cfg=ANIMALS[type]; const b=(type==='raccoon')?makeRaccoon():makeBoar(); b.type=type; b.cfg=cfg;
+  b.group.position.set(cfg.spawn.x, terrainH(cfg.spawn.x,cfg.spawn.z), cfg.spawn.z); scene.add(b.group);
+  b.state='approach'; b.t=0; b.target={x:pileFood.position.x,z:pileFood.position.z}; boar=b; boarStole=0; lastNightStorm=false; }
+function decideAnimal(b){ b.t=0; const cfg=b.cfg;
+  if(inventory.food<=0){ showToast(cfg.noFoodMsg,3400); b.state='sniff'; }
+  else if(cfg.safe()){ showToast(cfg.safeMsg(),4000); b.state='sniff'; }
+  else { showToast(cfg.raidMsg,3000); b.state='raid'; } }
+function animalSteal(b){ const cfg=b.cfg; boarHad=inventory.food; const amt=Math.min(inventory.food, cfg.stealMin+Math.floor(Math.random()*cfg.stealVar)); addResource('food',-amt); boarStole=amt;
+  for(let i=0;i<Math.min(3,amt);i++){ const fr=new THREE.Mesh(new THREE.SphereGeometry(0.16,7,7),new THREE.MeshStandardMaterial({color:'#e0552f'})); fr.position.set(-0.1-i*0.16,cfg.backY,0); b.group.add(fr); } }
+function leaveAnimal(b){ b.head.rotation.x=0; b.state='leave'; b.t=0; b.target={x:34,z:34}; }
+function updateAnimal(dt){ const b=boar; b.t+=dt; const cfg=b.cfg;
+  const moving=(b.state==='approach'||b.state==='leave');
+  b.legs.forEach((l,i)=>{ l.rotation.x = moving? Math.sin(elapsed*10+i*Math.PI)*0.5 : 0; });
+  if(moving){ const dx=b.target.x-b.group.position.x, dz=b.target.z-b.group.position.z, dist=Math.hypot(dx,dz);
+    if(dist>0.05){ const sp=(b.state==='leave'?cfg.leaveSpeed:cfg.speed)*dt, step=Math.min(sp,dist); b.group.position.x+=dx/dist*step; b.group.position.z+=dz/dist*step; b.group.position.y=terrainH(b.group.position.x,b.group.position.z); b.group.rotation.y=Math.atan2(dx,dz); }
+    if(b.state==='approach' && dist<2.4) decideAnimal(b);
+    if(b.state==='leave' && dist<1.5){ scene.remove(b.group); boar=null; dawn(); }
+  } else if(b.state==='sniff'){ b.head.rotation.x=0.5+Math.sin(elapsed*6)*0.1; if(b.t>1.6) leaveAnimal(b); }
+  else if(b.state==='raid'){ b.head.rotation.x=0.6+Math.sin(elapsed*12)*0.12; b.group.position.y=terrainH(b.group.position.x,b.group.position.z)+Math.abs(Math.sin(elapsed*12))*0.05; if(b.t>1.9){ animalSteal(b); leaveAnimal(b); } }
+}
+
+// ---- sleep -> night -> dawn ----
+function sleep(){ if(sleeping||boar||storm) return; closeMenu(); sleeping=true; nightTarget=1;
+  showToast('🌙 You settle into your shelter. Night falls…',2600);
+  const order={'':'boar',boar:'storm',storm:'raccoon',raccoon:'boar'}; const threat=order[lastThreat]||'boar'; lastThreat=threat;
+  setTimeout(()=>{
+    if(threat==='boar'){ showToast('🐗 Grunts echo from the dark — a wild boar is prowling for your food!',3000); setTimeout(()=>spawnAnimal('boar'),1500); }
+    else if(threat==='raccoon'){ showToast('🦝 Tiny paws scratch in the dark — a raccoon is sneaking toward your food!',3200); setTimeout(()=>spawnAnimal('raccoon'),1500); }
+    else { showToast('⛈️ Dark clouds roll in — a cold storm is coming! A roof keeps you dry and your fire alive.',3800); setTimeout(startStorm,1700); }
+  }, 2300); }
+function dawn(){ nightTarget=0; day++; updateDayBadge(); needGrace=15;
+  setTimeout(()=>{ sleeping=false;
+    if(boarStole>0){ const had=boarHad, took=boarStole, left=had-took;
+      showChallengeModal({theme:'food',cta:'Got it! ☀️',eyebrow:'Morning Math • Subtraction',title:'☀️ Dawn Recap',unit:'food',story:`While you slept, a boar made off with <b>${took} food</b>. You had <b>${had}</b> before bed. How many are left this morning?`,diagram:`${had} − ${took} = ?`,answer:left,tolerance:0.001,hints:['Take away what the boar stole.',`Start at ${had} and count back ${took}.`,`${had} − ${took} = ${left}.`],winStory:`Right — <b>${left} food</b> left. Tonight, build a 🚧 food fence or keep your 🔥 fire lit to keep boars out!`});
+    } else if(lastNightStorm){ showToast('☀️ The storm clears and Day '+day+' begins.',4200); }
+    else { showToast('☀️ Dawn breaks on Day '+day+' — a peaceful night! Your food is safe. 🌅',4800); }
+    boarStole=0; lastNightStorm=false; }, 1500); }
+
+/* --------------------------- WEATHER: STORMS --------------------------- */
+let lastThreat='', storm=null, rain=null, lastNightStorm=false;
+const ROOF_POOL=[
+  {eyebrow:'Area • Gr 4',story:"Your shelter floor is <b>4 ft</b> by <b>5 ft</b>. How many square feet of thatch will cover it?",diagram:"4 × 5 = ?   sq ft",answer:20,tolerance:0.001,unit:'sq ft',hints:["Area of a rectangle = length × width.","Picture 4 rows of 5 squares.","4 × 5 = 20 square feet."]},
+  {eyebrow:'Area • Gr 4',story:"A roof must cover a space <b>6 ft</b> by <b>3 ft</b>. What area of thatch do you need?",diagram:"6 × 3 = ?   sq ft",answer:18,tolerance:0.001,unit:'sq ft',hints:["Multiply length by width.","6 rows of 3.","6 × 3 = 18."]},
+  {eyebrow:'Area • Gr 4',story:"Your sleeping spot is a square, <b>4 ft</b> on every side. How many square feet must the roof cover?",diagram:"4 × 4 = ?   sq ft",answer:16,tolerance:0.001,unit:'sq ft',hints:["Area of a square = side × side.","4 × 4.","That's 16 square feet."]},
+  {eyebrow:'Decimals • Gr 5 preview',story:"The roof needs to cover <b>4 ft</b> by <b>5.5 ft</b>. What is the area?",diagram:"4 × 5.5 = ?   sq ft",answer:22,tolerance:0.001,unit:'sq ft',hints:["length × width.","4 × 5.5 = (4 × 5) + (4 × 0.5).","20 + 2 = 22."]},
+  {eyebrow:'Multi-step • Gr 5 preview',story:"A <b>4 ft</b> by <b>6 ft</b> roof uses thatch bundles that each cover <b>3 sq ft</b>. How many bundles do you need?",diagram:"(4 × 6) ÷ 3 = ?",answer:8,tolerance:0.001,unit:'bundles',hints:["First find the area: 4 × 6 = 24 sq ft.","Each bundle covers 3 sq ft, so divide.","24 ÷ 3 = 8 bundles."]},
+];
+let roofIdx=0, roofBuilt=false, roofMeshG=null;
+function roofChallenge(){ const q=ROOF_POOL[roofIdx++ % ROOF_POOL.length]; return Object.assign({theme:'build',cta:'Build Roof! ⛺',title:'⛺ Rain Roof',unit:'sq ft',winStory:'⛺ A thatched roof now shelters your camp. Let it pour — you will stay dry and warm!'}, q); }
+function buildRoof(){ roofBuilt=true; if(roofMeshG) scene.remove(roofMeshG);
+  roofMeshG=new THREE.Group();
+  const poleM=new THREE.MeshStandardMaterial({color:'#7a4a25',roughness:1}), thatchM=new THREE.MeshStandardMaterial({color:'#c2a24a',roughness:1});
+  const w=6,d=5,h=2.6;
+  [[-w/2,-d/2],[w/2,-d/2],[-w/2,d/2],[w/2,d/2]].forEach(([x,z])=>{ const p=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.16,h,7),poleM); p.position.set(x,h/2,z); p.castShadow=true; roofMeshG.add(p); });
+  const slab=new THREE.Mesh(new THREE.BoxGeometry(w+0.4,0.25,d+0.4),thatchM); slab.position.y=h; slab.castShadow=true; roofMeshG.add(slab);
+  const cap=new THREE.Mesh(new THREE.ConeGeometry(w*0.62,1.0,4),thatchM); cap.rotation.y=Math.PI/4; cap.position.y=h+0.6; cap.castShadow=true; roofMeshG.add(cap);
+  roofMeshG.position.set(CAMP.x, terrainH(CAMP.x,CAMP.z), CAMP.z); scene.add(roofMeshG); popIn(roofMeshG); }
+
+function makeRain(){ const N=520, geo=new THREE.BufferGeometry(), pos=new Float32Array(N*3);
+  for(let i=0;i<N;i++){ pos[i*3]=CAMP.x+(Math.random()-0.5)*70; pos[i*3+1]=Math.random()*42; pos[i*3+2]=CAMP.z+(Math.random()-0.5)*70; }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const pts=new THREE.Points(geo,new THREE.PointsMaterial({color:'#cfe2ff',size:0.32,transparent:true,opacity:0.85})); pts.visible=false; scene.add(pts); return pts; }
+function startStorm(){ if(!rain) rain=makeRain(); rain.visible=true; lastNightStorm=true; storm={t:0,phase:'rain'}; }
+function resolveStorm(){ storm.phase='done';
+  if(roofBuilt){ NEEDS.warmth=Math.max(NEEDS.warmth,72); updateNeeds(); showToast('⛺ Snug under your roof, you stay warm and dry through the storm!',4000); }
+  else { if(fireLit){ fireLit=false; flames.visible=false; fireLight.intensity=0; fire.ring.material.color.set('#e8552f'); updateHUD(); }
+    NEEDS.warmth=Math.min(NEEDS.warmth,22); updateNeeds(); showToast('🥶 Rain soaks your camp and puts out the fire — a cold, rough night! Build a ⛺ roof to stay dry.',4600); }
+  setTimeout(()=>{ if(rain) rain.visible=false; storm=null; dawn(); }, 2800); }
+function updateStorm(dt){ const s=storm; s.t+=dt; const p=rain.geometry.attributes.position;
+  for(let i=0;i<p.count;i++){ p.array[i*3+1]-=42*dt; if(p.array[i*3+1]<0){ p.array[i*3+1]=42; p.array[i*3]=CAMP.x+(Math.random()-0.5)*70; p.array[i*3+2]=CAMP.z+(Math.random()-0.5)*70; } }
+  p.needsUpdate=true;
+  if(fireLit && !roofBuilt){ flames.children.forEach(fl=>fl.scale.y=0.5+Math.random()*0.5); }
+  if(s.phase==='rain' && s.t>5.5) resolveStorm();
+}
+
+function animate(){ const dt=Math.min(clock.getDelta(),0.05); elapsed+=dt;
+  const pos=oceanGeo.attributes.position;
+  for(let i=0;i<pos.count;i++){ const ix=i*3,x=oceanBase[ix],y=oceanBase[ix+1]; pos.array[ix+2]=Math.sin(x*0.15+elapsed)*0.35+Math.cos(y*0.2+elapsed*0.8)*0.35; }
+  pos.needsUpdate=true;
+  const pulse=0.35+Math.sin(elapsed*2)*0.18;
+  SIGNS.forEach((sg,i)=>{ sg.ring.material.opacity=pulse; sg.group.position.y=sg.base+0.25+Math.sin(elapsed*1.6+i)*0.18; });
+  groveTrees.forEach((tr,i)=>tr.rotation.z=Math.sin(elapsed*1.2+i)*0.03);
+  if(campBox.visible){ campBox.material.opacity=0.3+Math.sin(elapsed*2)*0.12; }
+  springWater.material.opacity=0.7+Math.sin(elapsed*2.5)*0.15;
+  lagoon.material.opacity=0.82+Math.sin(elapsed*2.2)*0.1;
+  if(fishing){ fishPhase+=dt; const dip=caught? -0.35+Math.abs(Math.sin(fishPhase*16))*0.12 : Math.sin(fishPhase*3)*0.1; bobber.position.y=bobBase.y+dip; ripple.scale.setScalar(1+Math.sin(fishPhase*4)*0.4); ripple.material.opacity=0.45+Math.sin(fishPhase*4)*0.2; if(caught){ hookFish.visible=true; hookFish.position.y=bobBase.y+dip; } }
+  lagoonFish.forEach(f=>{ const ang=elapsed*0.6+f.ph; f.g.position.set(FISH.x+f.bx+Math.cos(ang)*1.3,0.42+Math.sin(ang*2)*0.06,FISH.z+f.bz+Math.sin(ang)*1.3); f.g.rotation.y=-ang+Math.PI/2; });
+  if(fireLit){ flames.children.forEach((f,i)=>{ f.scale.y=1+Math.sin(elapsed*12+i)*0.18; f.scale.x=1+Math.cos(elapsed*10+i)*0.08; }); fireLight.intensity=1.4+Math.sin(elapsed*15)*0.4; }
+  clouds.forEach((c,i)=>{ c.position.x+=0.01+i*0.003; if(c.position.x>48)c.position.x=-48; });
+  updateNight(dt); if(boar) updateAnimal(dt); if(storm) updateStorm(dt);
+  updateHero(dt);
+  if(!anyOpen()) tickNeeds(dt); updateNeeds();
+  applyCamera(); renderer.render(scene,camera); requestAnimationFrame(animate);
+}
+/* --------------------------- SAVE / LOAD --------------------------- */
+const SAVE_KEY='survival-island-save-v1';
+const _lsOk=(()=>{ try{ const k='__t'; localStorage.setItem(k,'1'); localStorage.removeItem(k); return true; }catch(e){ return false; } })();
+const store=(typeof window!=='undefined' && window.storage && typeof window.storage.get==='function')
+  ? { async get(k){ try{ const r=await window.storage.get(k); return (r&&typeof r.value==='string')?r.value:null; }catch(e){ return null; } },
+      set(k,v){ try{ return window.storage.set(k,v); }catch(e){} } }
+  : { async get(k){ try{ return _lsOk?localStorage.getItem(k):null; }catch(e){ return null; } },
+      set(k,v){ try{ if(_lsOk) localStorage.setItem(k,v); }catch(e){} } };
+
+function gatherState(){ return { v:1,
+  inv:{wood:inventory.wood,water:inventory.water,food:inventory.food,xp:inventory.xp},
+  col:{water:collected.water,food:collected.food},
+  car:{wood:carrying.wood,food:carrying.food,water:carrying.water},
+  need:{t:+NEEDS.thirst.toFixed(1),h:+NEEDS.hunger.toFixed(1),w:+NEEDS.warmth.toFixed(1)},
+  fire:fireLit, lvl:campLevel,
+  tools:{axe:tools.axe,pole:tools.pole,jug:tools.jug,basket:tools.basket,firestarter:tools.firestarter},
+  found:{fish:[...found.fish],fruit:[...found.fruit]},
+  decor:Object.keys(decorOwned).filter(k=>decorOwned[k]),
+  won, day, fence:foodFenceBuilt, roof:roofBuilt, cache:cacheBuilt, lt:lastThreat, idx:{w:waterIdx,c:cocoIdx,f:fishIdx,ch:chopIndex} }; }
+
+function applyState(st){ if(!st||st.v!==1) return false;
+  if(st.inv) Object.assign(inventory, st.inv);
+  if(st.col) Object.assign(collected, st.col);
+  if(st.car) Object.assign(carrying, st.car);
+  if(st.need){ NEEDS.thirst=st.need.t; NEEDS.hunger=st.need.h; NEEDS.warmth=st.need.w; }
+  if(st.tools) Object.assign(tools, st.tools);
+  found.fish.clear(); ((st.found&&st.found.fish)||[]).forEach(x=>found.fish.add(x));
+  found.fruit.clear(); ((st.found&&st.found.fruit)||[]).forEach(x=>found.fruit.add(x));
+  if(st.idx){ waterIdx=st.idx.w||0; cocoIdx=st.idx.c||0; fishIdx=st.idx.f||0; chopIndex=st.idx.ch||0; }
+  won=!!st.won; campLevel=st.lvl||0; day=st.day||1; if(typeof updateDayBadge==='function') updateDayBadge();
+  setCampLevel(campLevel);
+  foodFenceBuilt=false; if(foodFence){scene.remove(foodFence); foodFence=null;} if(st.fence) buildFence();
+  nightLevel=0; nightTarget=0; applyNight(0); sleeping=false; boar=null;
+  roofBuilt=false; if(roofMeshG){scene.remove(roofMeshG); roofMeshG=null;} if(st.roof) buildRoof();
+  cacheBuilt=false; if(cacheMeshG){scene.remove(cacheMeshG); cacheMeshG=null;} if(st.cache) buildCache();
+  if(rain) rain.visible=false; storm=null; lastNightStorm=false; lastThreat=st.lt||'';
+  (st.decor||[]).forEach(k=>{ const d=DECOR.find(x=>x.key===k); if(d){ decorOwned[k]=true; d.build(); } });
+  if(st.fire){ fireLit=false; lightFire(); }
+  needGrace=8; collapsing=false;
+  updateHUD(); updateNeeds(); updateCarry(); if(typeof updatePiles==='function') updatePiles();
+  return true; }
+
+let lastSaved='';
+function saveNow(){ try{ const j=JSON.stringify(gatherState()); if(j!==lastSaved){ lastSaved=j; store.set(SAVE_KEY,j); } }catch(e){} }
+function resetGame(){ try{ store.set(SAVE_KEY,''); }catch(e){} lastSaved=''; location.reload(); }
+window.addEventListener('visibilitychange',()=>{ if(document.hidden) saveNow(); });
+window.addEventListener('beforeunload', saveNow);
+
+(async function start(){
+  let loaded=false;
+  try{ const raw=await store.get(SAVE_KEY); if(raw){ loaded=applyState(JSON.parse(raw)); lastSaved=raw; } }catch(e){}
+  updateHUD(); updateNeeds();
+  if(loaded) setTimeout(()=>showToast('🏝️ Welcome back! Your island is just as you left it.',4200),700);
+  animate();
+  setInterval(saveNow,5000);
+})();
+</script>
+</body>
+</html>
