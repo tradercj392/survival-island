@@ -129,7 +129,7 @@
 <canvas id="scene"></canvas>
 <div id="hud">
   <div class="title-badge"><span id="day-badge">Day 1</span><h1>Survival Island</h1></div>
-  <div id="resources">🪵 <span id="r-wood">0</span>  💧 <span id="r-water">0</span>L  🍎 <span id="r-food">0</span>  ⭐ <span id="r-xp">0</span></div>
+  <div id="resources">🌲 <span id="r-wood">0</span>  💧 <span id="r-water">0</span>L  🍎 <span id="r-food">0</span>  ⭐ <span id="r-xp">0</span></div>
   <div id="goals">
     <span class="goal" id="g-shelter">🏕️ <i>0/3</i></span>
     <span class="goal" id="g-water">💧 <i>0/6</i></span>
@@ -400,7 +400,7 @@ function updateCarry(){
   if(carrying.water>0){ const j=new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.2,0.5,10),M_WATER); j.position.set(0,y+0.28,0); j.castShadow=true; carryLoad.add(j); const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.12,8),M_WOOD); cap.position.set(0,y+0.58,0); carryLoad.add(cap); }
   const ce=document.getElementById('carry');
   const tot=carrying.wood+carrying.food+carrying.water;
-  if(ce){ if(tot>0){ const p=[]; if(carrying.wood)p.push(carrying.wood+'🪵'); if(carrying.food)p.push(carrying.food+'🍎'); if(carrying.water)p.push((+carrying.water.toFixed(1))+'💧'); ce.innerHTML='🎒 Carrying '+p.join('  ')+' <span class="carry-hint">→ take to 🏕️ camp</span>'; ce.classList.add('show'); } else ce.classList.remove('show'); }
+  if(ce){ if(tot>0){ const p=[]; if(carrying.wood)p.push(carrying.wood+'🌲'); if(carrying.food)p.push(carrying.food+'🍎'); if(carrying.water)p.push((+carrying.water.toFixed(1))+'💧'); ce.innerHTML='🎒 Carrying '+p.join('  ')+' <span class="carry-hint">→ take to 🏕️ camp</span>'; ce.classList.add('show'); } else ce.classList.remove('show'); }
 }
 
 /* --------------------------- 4) INVENTORY --------------------------- */
@@ -439,14 +439,14 @@ const FLOOR_CHALLENGE={kind:'build',eyebrow:'Perimeter Challenge',title:'🏕️
   story:"Time to build! You'll border the rectangular floor with <b>30 ft</b> of edging rope. The length is <b>8 ft</b>. What <b>width</b> uses every last foot of rope?",
   diagram:`<div class="rect"><span class="lab-top">length = 8 ft</span><span class="lab-side">width = ?</span>floor</div><div>Rope around the edge (perimeter) = 30 ft</div>`,
   answer:7,tolerance:0.001,
-  winStory:`Nailed it! 2 × (8 + 7) = 30 ft — every foot used. Floor laid! (−${FLOOR_COST} 🪵) Now haul wood back for the walls!`,
+  winStory:`Nailed it! 2 × (8 + 7) = 30 ft — every foot used. Floor laid! (−${FLOOR_COST} 🌲) Now haul wood back for the walls!`,
   hints:["The rope wraps the whole rectangle — the <b>perimeter</b>. A rectangle has 2 lengths and 2 widths.","The two 8 ft lengths use 8 + 8 = <b>16 ft</b>. How much rope is left for the two widths?","30 − 16 = 14 ft for <b>two</b> widths. So one width = 14 ÷ 2."],
   onSolve:()=>{ addWood(-FLOOR_COST); buildFloor(); advanceStage(); }};
 const WALL_CHALLENGE={kind:'build',eyebrow:'Area Challenge',title:'🧱 Raise the Walls',unit:'sq ft',
   story:"Now weave palm-leaf walls! One wall panel is <b>8 ft</b> long and <b>6 ft</b> tall. How many <b>square feet</b> of thatch cover that wall?",
   diagram:`<div class="rect"><span class="lab-top">8 ft long</span><span class="lab-side">6 ft tall</span>wall</div><div>Area = length × height</div>`,
   answer:48,tolerance:0.001,
-  winStory:`Beautiful weaving! 8 × 6 = 48 sq ft of thatch per wall. Walls up! (−${WALL_COST} 🪵) One more haul — the roof is next!`,
+  winStory:`Beautiful weaving! 8 × 6 = 48 sq ft of thatch per wall. Walls up! (−${WALL_COST} 🌲) One more haul — the roof is next!`,
   hints:["Area is the whole surface covered — like tiles filling the wall. Multiply <b>length × height</b>.","Try 8 × 6 — picture 8 columns with 6 squares stacked in each.","Count by 8s six times: 8, 16, 24, 32, 40, 48."],
   onSolve:()=>{ addWood(-WALL_COST); buildWalls(); advanceStage(); }};
 const ROOF_CHALLENGE={kind:'build',eyebrow:'Volume Challenge',title:'⛺ Thatch the Roof',unit:'cubic ft',
@@ -558,7 +558,7 @@ let fishIdx=0;
 const FIRE_CHALLENGE={theme:'fire',cta:'Light it! 🔥',eyebrow:'Division Challenge',title:'🔥 Start a Fire',unit:'logs',
   story:"Each log burns for <b>2 hours</b>. You want your fire to last <b>8 hours</b> through the night. How many logs do you need?",
   diagram:"8 hours  ÷  2 hours per log  =  ?",answer:4,tolerance:0.001,
-  winStory:`Warm at last! 8 ÷ 2 = 4 logs. (−${FIRE_LOGS} 🪵) Your fire crackles through the night.`,
+  winStory:`Warm at last! 8 ÷ 2 = 4 logs. (−${FIRE_LOGS} 🌲) Your fire crackles through the night.`,
   hints:["Division shares into equal groups. How many 2s fit in 8?","Count by 2s: 2, 4, 6, 8 — that took 4 logs."],
   onSolve:()=>{ addResource('wood',-FIRE_LOGS); lightFire(); }};
 
@@ -570,7 +570,7 @@ function openCoconuts(){ if(!tools.basket){ showToast("You need a basket 🧺 �
 function openFishing(){ if(!tools.pole){ showToast("You need a fishing pole 🎣 — craft one at the workbench 🛠️."); return; } startFishing(); const q=FISH_POOL[fishIdx++%FISH_POOL.length]; const after=inventory.food+q.answer; const si=Math.floor(Math.random()*FISH_SPECIES.length), sp=FISH_SPECIES[si], isNew=!found.fish.has(si);
   showChallengeModal(Object.assign({},q,{theme:'food',cta:'Cast line! 🎣',eyebrow:'Catch Challenge',title:'🎣 Catch Fish',unit:'fish',tolerance:0.001,winStory:`${isNew?'🎉 NEW CATCH! ':'Reel it in! 🎣 '}A <b>${sp.name}</b>! You bag <b>${q.answer}</b> fish. <span style="opacity:.7">${sp.fact}</span> Take your catch to 🏕️ camp.`,onSolve:()=>{ carrying.food+=q.answer; found.fish.add(si); caught=true; updateCarry(); SFX.fish(); }})); }
 function openFire(){ if(!tools.firestarter){ showToast("You need a fire drill 🔥 — craft one at the workbench 🛠️."); return; } if(fireLit){ showToast("Your fire's already blazing 🔥"); return; }
-  if(inventory.wood<FIRE_LOGS){ showToast(`A fire needs about ${FIRE_LOGS} 🪵 — you have ${inventory.wood}. Chop more at the grove 🌲!`); return; }
+  if(inventory.wood<FIRE_LOGS){ showToast(`A fire needs about ${FIRE_LOGS} 🌲 — you have ${inventory.wood}. Chop more at the grove 🌲!`); return; }
   showChallengeModal(FIRE_CHALLENGE); }
 
 /* --------------------------- 6) MODAL ------------------------------- */
@@ -595,8 +595,8 @@ el.input.addEventListener('keydown',e=>{ if(e.key==='Enter')checkAnswer(); });
 el.cont.addEventListener('click',()=>{ closeModal(); if(reopenCraft){ reopenCraft=false; if(lastMenuFn) lastMenuFn(); } });
 backdrop.addEventListener('click',e=>{ if(e.target===backdrop) closeModal(); });
 function openChop(tree){ if(!tools.axe){ showToast("You need an axe 🪓 — craft one at the workbench 🛠️."); return; } const q=CHOP_POOL[chopIndex%CHOP_POOL.length]; chopIndex++;
-  showChallengeModal(Object.assign({},q,{theme:'wood',cta:'Chop! 🪓',eyebrow:'Chopping Challenge',title:'🌲 Chop Wood',unit:'logs',winStory:`Timber! 🪵 You hoist <b>${q.answer} logs</b> onto your back. Haul them to 🏕️ camp to stock up!`,onSolve:()=>{ carrying.wood+=q.answer; chopFX(tree); updateCarry(); }})); }
-function depositCarry(){ const w=carrying.wood,fo=carrying.food,wa=carrying.water; if(w+fo+wa<=0) return false; if(w)addResource('wood',w); if(fo){addResource('food',fo); collected.food+=fo;} if(wa){addResource('water',wa); collected.water=+(collected.water+wa).toFixed(2);} carrying.wood=carrying.food=carrying.water=0; updateCarry(); const p=[]; if(w)p.push(w+' 🪵'); if(fo)p.push(fo+' 🍎'); if(wa)p.push((+wa.toFixed(1))+' 💧'); showToast('🎒 Stocked up: '+p.join('  ')+' at camp!',3500); SFX.deposit(); return true; }
+  showChallengeModal(Object.assign({},q,{theme:'wood',cta:'Chop! 🪓',eyebrow:'Chopping Challenge',title:'🌲 Chop Wood',unit:'logs',winStory:`Timber! 🌲 You hoist <b>${q.answer} logs</b> onto your back. Haul them to 🏕️ camp to stock up!`,onSolve:()=>{ carrying.wood+=q.answer; chopFX(tree); updateCarry(); }})); }
+function depositCarry(){ const w=carrying.wood,fo=carrying.food,wa=carrying.water; if(w+fo+wa<=0) return false; if(w)addResource('wood',w); if(fo){addResource('food',fo); collected.food+=fo;} if(wa){addResource('water',wa); collected.water=+(collected.water+wa).toFixed(2);} carrying.wood=carrying.food=carrying.water=0; updateCarry(); const p=[]; if(w)p.push(w+' 🌲'); if(fo)p.push(fo+' 🍎'); if(wa)p.push((+wa.toFixed(1))+' 💧'); showToast('🎒 Stocked up: '+p.join('  ')+' at camp!',3500); SFX.deposit(); return true; }
 function setNeed(k,v){ NEEDS[k]=Math.max(0,Math.min(100,v)); }
 function updateNeeds(){ ['thirst','hunger','warmth'].forEach(k=>{ const el=document.getElementById('need-'+k); if(!el)return; const v=NEEDS[k], bar=el.querySelector('i'); bar.style.width=v.toFixed(1)+'%'; bar.style.background=v>50?'#5fbf6a':v>25?'#e6b23f':'#e8552f'; el.classList.toggle('low',v<=25); }); }
 function drink(){ if(NEEDS.thirst>=98){ showToast('💧 Not thirsty right now.',1600); return; } if(inventory.water<1){ showToast('💧 No water to drink — fill up at the 💧 spring and haul it to 🏕️ camp.',3200); return; } addResource('water',-1); setNeed('thirst',NEEDS.thirst+55); updateNeeds(); SFX.sip(); showToast('💧 Glug glug! You drink 1 L. Thirst quenched.',1800); }
@@ -656,7 +656,7 @@ const anyOpen=()=>modalOpen()||craftOpen()||journalOpen()||guideOpen()||restOpen
 let reopenCraft=false, lastMenu=null;
 
 // ---- generic build menu (used by workbench AND camp decorating) ----
-const RES_ICON={wood:'🪵',food:'🍎',water:'💧'}; const RES_NAME={wood:'wood',food:'food',water:'water'};
+const RES_ICON={wood:'🌲',food:'🍎',water:'💧'}; const RES_NAME={wood:'wood',food:'food',water:'water'};
 function costsText(c){ const k=Object.keys(c); return k.length? k.map(r=>`${+(+c[r]).toFixed(2)} ${RES_NAME[r]}`).join('  ') : 'free'; }
 function canAfford(c){ return Object.keys(c).every(r=>inventory[r]>=c[r]); }
 function spend(c){ Object.keys(c).forEach(r=>addResource(r,-c[r])); }
@@ -789,8 +789,8 @@ const GUIDE=[
   {t:'Build a Shelter', how:'On a survival island, shelter comes first — it keeps you safe and rested.', go:'Go to your 🏕️ camp and build your first shelter (a leaf ditch, then a lean-to).', done:()=>campLevel>=1},
   {t:'Find Food', how:"You can't last long hungry — catch fish or gather fruit.", go:'Craft a 🎣 pole or 🧺 basket at the 🛠️ workbench, then fish the pond or forage the 🍃 grove.', done:()=>collected.food>0},
   {t:'Collect Water', how:'Fresh water is vital — you can only go a few days without it.', go:'Craft a 🪣 water jug at the workbench, then fill up at the 💧 spring.', done:()=>collected.water>0},
-  {t:'Make Fire', how:'Fire means warmth, cooked food, and safety through the night.', go:'Craft a 🔥 fire drill, chop 🪵 wood, then light the 🔥 fire pit.', done:()=>fireLit},
-  {t:'Upgrade Your Camp', how:'A sturdier home shelters you better. Earn XP by surviving, then rebuild bigger.', go:'Gather to earn ⭐ XP & 🪵 wood, then upgrade to a real hut at 🏕️ camp (Level 3).', done:()=>campLevel>=3},
+  {t:'Make Fire', how:'Fire means warmth, cooked food, and safety through the night.', go:'Craft a 🔥 fire drill, chop 🌲 wood, then light the 🔥 fire pit.', done:()=>fireLit},
+  {t:'Upgrade Your Camp', how:'A sturdier home shelters you better. Earn XP by surviving, then rebuild bigger.', go:'Gather to earn ⭐ XP & 🌲 wood, then upgrade to a real hut at 🏕️ camp (Level 3).', done:()=>campLevel>=3},
   {t:'Grow a Garden', how:'Grow your own food — crops regrow, so you can farm as much as you like.', go:'Visit the 🌱 Garden: tap a plot to plant seeds, water them, then harvest food!', done:()=>gardenHarvests>0},
   {t:'Build Your Island Home', how:"You've mastered survival — now make this island truly yours.", go:'Keep earning XP & materials to reach the 🏝️ Island Villa (Level 6).', done:()=>campLevel>=6},
 ];
@@ -856,7 +856,7 @@ function pUp(e){ if(!down)return; down=false; if(dragging||anyOpen())return;
   pointer.x=(e.clientX/innerWidth)*2-1; pointer.y=-(e.clientY/innerHeight)*2+1;
   raycaster.setFromCamera(pointer,camera);
   const ph=raycaster.intersectObjects([hbWood,hbFood,hbWater])[0];
-  if(ph){ const n=ph.object.name; showToast(n==='pile_wood'?`🪵 Wood stockpile: ${inventory.wood} logs`:n==='pile_food'?`🍎 Food stockpile: ${inventory.food}`:`💧 Water stored: ${(+inventory.water.toFixed(1))} L`,3000); return; }
+  if(ph){ const n=ph.object.name; showToast(n==='pile_wood'?`🌲 Wood stockpile: ${inventory.wood} logs`:n==='pile_food'?`🍎 Food stockpile: ${inventory.food}`:`💧 Water stored: ${(+inventory.water.toFixed(1))} L`,3000); return; }
   const th=raycaster.intersectObjects(choppables)[0];
   if(th){ let g=th.object; while(g&&!g.userData.isTree) g=g.parent;
     if(g){ const d=Math.hypot(hero.pos.x-g.position.x,hero.pos.z-g.position.z);
@@ -880,7 +880,60 @@ function showToast(m,ms=3800){ toastEl.innerHTML=m; toastEl.classList.add('show'
 showToast("Craft tools at the 🛠️ workbench, then gather to earn ⭐XP &amp; materials. Visit 🏕️ camp to upgrade your home (Lvl 1→6)! Watch your 💧🍖🔥 meters — tap 💧/🍖 to drink &amp; eat, and warm up by the fire. Tap 📔 for discoveries.",12000);
 
 // proximity zones — entering triggers the action once, until you leave again
-const zones=[{cx:GROVE.x,cz:GROVE.z,r:6.5,action:openChop,armed:true},{cx:CAMP.x,cz:CAMP.z,r:7,action:handleCampClick,armed:true},
+/* --------------------------- VISITING TRADER + DAILY REWARDS --------------------------- */
+const TRADER={x:0,z:76};
+let dailyClaimed=false, traderTrades=[], traderBoat=null;
+const TRADE_POOL=[
+  {icon:'🌲',name:'Food → Wood',desc:'trade food for logs',give:{food:8},get:{wood:16},
+   q:{theme:'wood',cta:'Trade! 🤝',title:'🤝 Food for Wood',eyebrow:'Multiply • Gr 4',unit:'wood',story:"The trader gives <b>2 wood</b> for each food. If you trade <b>8 food</b>, how much wood do you get?",diagram:"8 × 2 = ?",answer:16,tolerance:0.001,hints:["2 wood for every 1 food.","8 lots of 2.","8 × 2 = 16."]}},
+  {icon:'💧',name:'Wood → Water',desc:'trade logs for water',give:{wood:10},get:{water:5},
+   q:{theme:'water',cta:'Trade! 🤝',title:'🤝 Wood for Water',eyebrow:'Divide • Gr 4',unit:'L',story:"Every <b>2 wood</b> buys <b>1 L</b> of water. How many liters do you get for <b>10 wood</b>?",diagram:"10 ÷ 2 = ?",answer:5,tolerance:0.001,hints:["Each 2 wood = 1 L.","How many 2s are in 10?","10 ÷ 2 = 5."]}},
+  {icon:'⭐',name:'Food → XP',desc:'trade food for XP',give:{food:6},get:{xp:30},
+   q:{theme:'build',cta:'Trade! 🤝',title:'🤝 Food for XP',eyebrow:'Multiply • Gr 4',unit:'XP',story:"The trader pays <b>5 XP</b> for each food. Trade <b>6 food</b> — how much XP?",diagram:"6 × 5 = ?",answer:30,tolerance:0.001,hints:["5 XP per food.","6 groups of 5.","6 × 5 = 30."]}},
+  {icon:'🍎',name:'Wood → Food',desc:'trade logs for food',give:{wood:12},get:{food:4},
+   q:{theme:'food',cta:'Trade! 🤝',title:'🤝 Wood for Food',eyebrow:'Divide • Gr 4',unit:'food',story:"Each food costs <b>3 wood</b>. How many food can you buy with <b>12 wood</b>?",diagram:"12 ÷ 3 = ?",answer:4,tolerance:0.001,hints:["3 wood per food.","How many 3s in 12?","12 ÷ 3 = 4."]}},
+  {icon:'🎁',name:'Food → Bundle',desc:'food for wood + water',give:{food:10},get:{wood:6,water:4},
+   q:{theme:'food',cta:'Trade! 🤝',title:'🤝 Supply Bundle',eyebrow:'Add • Gr 4',unit:'items',story:"For <b>10 food</b> the trader gives <b>6 wood</b> and <b>4 water</b>. How many items is that altogether?",diagram:"6 + 4 = ?",answer:10,tolerance:0.001,hints:["Add the two amounts.","6 + 4.","That's 10 items."]}},
+  {icon:'💧',name:'Food → Water',desc:'food for water',give:{food:4},get:{water:10},
+   q:{theme:'water',cta:'Trade! 🤝',title:'🤝 Food for Water',eyebrow:'Decimals • Gr 5 preview',unit:'L',story:"Each food buys <b>2.5 L</b> of water. How many liters for <b>4 food</b>?",diagram:"4 × 2.5 = ?",answer:10,tolerance:0.001,hints:["2.5 L per food.","4 × 2.5 = (4 × 2) + (4 × 0.5).","8 + 2 = 10."]}},
+];
+const DAILY_POOL=[
+  {eyebrow:'Subtract • Gr 4',story:"You gathered <b>24</b> berries and ate <b>9</b>. How many are left?",diagram:"24 − 9 = ?",answer:15,hints:["Take 9 away from 24.","24 − 9.","15 berries."]},
+  {eyebrow:'Multiply • Gr 4',story:"You set out <b>6</b> baskets with <b>7</b> shells in each. How many shells?",diagram:"6 × 7 = ?",answer:42,hints:["6 groups of 7.","6 × 7.","42 shells."]},
+  {eyebrow:'Divide • Gr 4',story:"You share <b>36</b> fish equally into <b>4</b> baskets. How many per basket?",diagram:"36 ÷ 4 = ?",answer:9,hints:["Split 36 into 4 equal groups.","4 × 9 = 36.","36 ÷ 4 = 9."]},
+  {eyebrow:'Multi-step • Gr 5 preview',story:"You have <b>5</b> crates of <b>4</b> apples, then find <b>3</b> more. How many apples in all?",diagram:"(5 × 4) + 3 = ?",answer:23,hints:["First 5 × 4 = 20.","Then add the 3 you found.","20 + 3 = 23."]},
+  {eyebrow:'Decimals • Gr 5 preview',story:"You tie <b>3</b> ropes, each <b>2.5 m</b> long. What is the total length?",diagram:"3 × 2.5 = ?",answer:7.5,unit:'m',hints:["3 lots of 2.5.","2.5 + 2.5 + 2.5.","7.5 m."]},
+  {eyebrow:'Fractions • Gr 4',story:"<b>Half</b> of your <b>18</b> carrots are planted. How many are planted?",diagram:"½ of 18 = 18 ÷ 2 = ?",answer:9,hints:["Half means split into 2 equal parts.","18 ÷ 2.","9 carrots."]},
+];
+function dailyPuzzle(){ const q=DAILY_POOL[day%DAILY_POOL.length]; return Object.assign({theme:'build',cta:'Solve! 🧠',title:'🧠 Daily Puzzle',unit:q.unit||'',tolerance:0.001}, q); }
+function rollTrader(){ traderTrades=[0,1,2].map(k=>Object.assign({claimed:false}, TRADE_POOL[(day+k*2)%TRADE_POOL.length])); dailyClaimed=false; }
+function grant(res){ for(const k in res){ if(k==='xp') inventory.xp+=res[k]; else addResource(k,res[k]); } updateHUD(); }
+function grantDaily(){ inventory.xp+=25; addResource('water',3); showToast('🎁 Daily reward: +25 ⭐ XP and +3 💧 water!',4200); }
+function openTrader(){ lastMenuFn=openTrader; const items=[];
+  items.push({icon:'🧠',name:"Today's Puzzle",desc:dailyClaimed?'come back tomorrow!':'solve for a reward',costs:{},owned:()=>dailyClaimed,ownedLabel:'claimed',challenge:dailyPuzzle(),build:()=>grantDaily(),own:()=>{dailyClaimed=true;}});
+  traderTrades.forEach(t=>{ items.push({icon:t.icon,name:t.name,desc:t.desc,costs:t.give,owned:()=>t.claimed,ownedLabel:'traded',challenge:t.q,build:()=>grant(t.get),own:()=>{t.claimed=true;}}); });
+  openMenu({eyebrow:'Trading Post',title:'⛵ Visiting Trader',sub:'A fresh puzzle and new trades every day — solve to earn!',items});
+}
+function buildTrader(){ const woodM=new THREE.MeshStandardMaterial({color:'#9c6b3f',roughness:1}), postM=new THREE.MeshStandardMaterial({color:'#6f4a28',roughness:1});
+  const g=new THREE.Group(); g.position.set(TRADER.x, terrainH(TRADER.x,TRADER.z), TRADER.z);
+  const counter=new THREE.Mesh(new THREE.BoxGeometry(3.2,1.0,1.2),woodM); counter.position.y=0.5; counter.castShadow=true; g.add(counter);
+  [[-1.5,-0.5],[1.5,-0.5],[-1.5,0.5],[1.5,0.5]].forEach(([x,z])=>{ const p=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,2.4,6),postM); p.position.set(x,1.2,z); g.add(p); });
+  const stripes=['#e0553f','#f7f0e0'];
+  for(let i=0;i<5;i++){ const st=new THREE.Mesh(new THREE.BoxGeometry(0.72,0.1,1.7),new THREE.MeshStandardMaterial({color:stripes[i%2],roughness:1})); st.position.set(-1.44+i*0.72,2.5,0); st.rotation.x=-0.14; st.castShadow=true; g.add(st); }
+  [['#e0402f',-1],['#3aa6d8',0],['#c2a24a',1]].forEach(([c,x])=>{ const b=new THREE.Mesh(new THREE.SphereGeometry(0.24,8,7),new THREE.MeshStandardMaterial({color:c})); b.position.set(x*0.85,1.15,0); g.add(b); });
+  scene.add(g);
+  const boat=new THREE.Group(); boat.position.set(TRADER.x+4,-1.0,TRADER.z+15);
+  const hull=new THREE.Mesh(new THREE.BoxGeometry(4,0.75,1.6),woodM); hull.position.y=0.3; hull.castShadow=true; boat.add(hull);
+  const prow=new THREE.Mesh(new THREE.ConeGeometry(0.8,1.3,4),woodM); prow.rotation.z=-Math.PI/2; prow.rotation.y=Math.PI/4; prow.position.set(2.4,0.3,0); boat.add(prow);
+  const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,3,6),postM); mast.position.y=1.8; boat.add(mast);
+  const sail=new THREE.Mesh(new THREE.PlaneGeometry(2,2.2),new THREE.MeshStandardMaterial({color:'#f7f0e0',roughness:1,side:THREE.DoubleSide})); sail.position.set(0,1.9,0.02); boat.add(sail);
+  scene.add(boat); traderBoat=boat;
+  const sign=makeSpot(TRADER.x,TRADER.z,'⛵','#e0a94a','trader'); SIGNS.push(sign);
+  rollTrader();
+}
+buildTrader();
+
+const zones=[{cx:TRADER.x,cz:TRADER.z,r:7,action:openTrader,armed:true},{cx:GROVE.x,cz:GROVE.z,r:6.5,action:openChop,armed:true},{cx:CAMP.x,cz:CAMP.z,r:7,action:handleCampClick,armed:true},
   {cx:SPRING.x,cz:SPRING.z,r:6,action:openWater,armed:true},{cx:COCO.x,cz:COCO.z,r:6,action:openCoconuts,armed:true},
   {cx:FISH.x,cz:FISH.z,r:6,action:openFishing,armed:true},{cx:FIRE.x,cz:FIRE.z,r:6,action:openFire,armed:true},
   {cx:BENCH.x,cz:BENCH.z,r:6,action:openWorkbench,armed:true}];
@@ -1097,7 +1150,7 @@ function sleep(){ if(sleeping||boar||storm) return; closeMenu(); sleeping=true; 
     else if(threat==='raccoon'){ showToast('🦝 Tiny paws scratch in the dark — a raccoon is sneaking toward your food!',3200); setTimeout(()=>spawnAnimal('raccoon'),1500); }
     else { showToast('⛈️ Dark clouds roll in — a cold storm is coming! A roof keeps you dry and your fire alive.',3800); setTimeout(startStorm,1700); }
   }, 2300); }
-function dawn(){ nightTarget=0; day++; updateDayBadge(); needGrace=15; SFX.dawn(); SFX.setAmbient('day');
+function dawn(){ nightTarget=0; day++; updateDayBadge(); needGrace=15; SFX.dawn(); SFX.setAmbient('day'); rollTrader(); setTimeout(()=>showToast('⛵ The trader is back at the beach — a new puzzle & trades await!',4200),3900);
   setTimeout(()=>{ sleeping=false;
     if(boarStole>0){ const had=boarHad, took=boarStole, left=had-took;
       showChallengeModal({theme:'food',cta:'Got it! ☀️',eyebrow:'Morning Math • Subtraction',title:'☀️ Dawn Recap',unit:'food',story:`While you slept, a boar made off with <b>${took} food</b>. You had <b>${had}</b> before bed. How many are left this morning?`,diagram:`${had} − ${took} = ?`,answer:left,tolerance:0.001,hints:['Take away what the boar stole.',`Start at ${had} and count back ${took}.`,`${had} − ${took} = ${left}.`],winStory:`Right — <b>${left} food</b> left. Tonight, build a 🚧 food fence or keep your 🔥 fire lit to keep boars out!`});
@@ -1180,7 +1233,7 @@ function gatherState(){ return { v:1,
   tools:{axe:tools.axe,pole:tools.pole,jug:tools.jug,basket:tools.basket,firestarter:tools.firestarter},
   found:{fish:[...found.fish],fruit:[...found.fruit]},
   decor:Object.keys(decorOwned).filter(k=>decorOwned[k]),
-  won, day, fence:foodFenceBuilt, roof:roofBuilt, cache:cacheBuilt, lt:lastThreat, mute:SFX.isMuted(), garden:plots.map(p=>p.stage), gh:gardenHarvests, idx:{w:waterIdx,c:cocoIdx,f:fishIdx,ch:chopIndex} }; }
+  won, day, fence:foodFenceBuilt, roof:roofBuilt, cache:cacheBuilt, lt:lastThreat, mute:SFX.isMuted(), garden:plots.map(p=>p.stage), gh:gardenHarvests, dc:dailyClaimed, tc:traderTrades.map(t=>t.claimed), idx:{w:waterIdx,c:cocoIdx,f:fishIdx,ch:chopIndex} }; }
 
 function applyState(st){ if(!st||st.v!==1) return false;
   if(st.inv) Object.assign(inventory, st.inv);
@@ -1200,6 +1253,7 @@ function applyState(st){ if(!st||st.v!==1) return false;
   if(rain) rain.visible=false; storm=null; lastNightStorm=false; lastThreat=st.lt||'';
   if(st.mute){ SFX.setMute(true); const sb=document.getElementById('sound-btn'); if(sb) sb.textContent='🔇'; }
   gardenHarvests=st.gh||0; if(Array.isArray(st.garden)) st.garden.forEach((stg,i)=>{ if(plots[i]) setStage(plots[i], stg||0); });
+  rollTrader(); dailyClaimed=!!st.dc; if(Array.isArray(st.tc)) st.tc.forEach((c,i)=>{ if(traderTrades[i]) traderTrades[i].claimed=c; });
   (st.decor||[]).forEach(k=>{ const d=DECOR.find(x=>x.key===k); if(d){ decorOwned[k]=true; d.build(); } });
   if(st.fire){ fireLit=false; lightFire(); }
   needGrace=8; collapsing=false;
