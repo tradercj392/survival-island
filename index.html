@@ -47,6 +47,7 @@
   #journal-btn{ position:absolute; bottom:20px; left:86px; pointer-events:auto; width:54px; height:54px; border-radius:50%; border:3px solid var(--ink); background:rgba(255,247,232,.95); box-shadow:3px 3px 0 rgba(42,33,24,.25); font-size:26px; cursor:pointer; }
   #journal-btn:active{ transform:translateY(2px); }
   #guide-btn{ position:absolute; bottom:20px; left:20px; pointer-events:auto; width:54px; height:54px; border-radius:50%; border:3px solid var(--ink); background:rgba(255,247,232,.95); box-shadow:3px 3px 0 rgba(42,33,24,.25); font-size:26px; cursor:pointer; }
+  #sound-btn{ position:absolute; bottom:20px; left:152px; pointer-events:auto; width:54px; height:54px; border-radius:50%; border:3px solid var(--ink); background:rgba(255,247,232,.95); box-shadow:3px 3px 0 rgba(42,33,24,.25); font-size:24px; cursor:pointer; }
   #guide-btn:active{ transform:translateY(2px); }
   #guide-btn .dot{ display:none; position:absolute; top:-2px; right:-2px; width:16px; height:16px; border-radius:50%; background:var(--coral); border:2px solid var(--ink); }
   #guide-btn.has-new .dot{ display:block; animation:bump 1s ease infinite; }
@@ -144,6 +145,7 @@
   </div>
   <button id="journal-btn">📔</button>
   <button id="guide-btn">📖<span class="dot"></span></button>
+  <button id="sound-btn">🔊</button>
 </div>
 <div id="rest"><div class="rest-card"><div class="rest-emoji">💤</div><h2>You had to rest</h2><p id="rest-msg"></p><button id="rest-go">Rise &amp; shine ☀️</button></div></div>
 <div id="modal-backdrop">
@@ -203,6 +205,54 @@ const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();
+/* --------------------------- AUDIO (procedural Web Audio) --------------------------- */
+const SFX = (()=>{
+  let ctx=null, master, sfxG, ambG, musG, noiseBuf=null, ready=false, muted=false;
+  let ambientMode='day', rainSrc=null, rainG=null;
+  function make(){ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return false; ctx=new AC();
+    master=ctx.createGain(); master.gain.value=muted?0:0.85; master.connect(ctx.destination);
+    sfxG=ctx.createGain(); sfxG.gain.value=0.9; sfxG.connect(master);
+    ambG=ctx.createGain(); ambG.gain.value=0.4; ambG.connect(master);
+    musG=ctx.createGain(); musG.gain.value=0.16; musG.connect(master);
+    const N=ctx.sampleRate*2; noiseBuf=ctx.createBuffer(1,N,ctx.sampleRate); const d=noiseBuf.getChannelData(0); for(let i=0;i<N;i++) d[i]=Math.random()*2-1;
+    startRain(); startAmbientLoop(); startMusicLoop(); ready=true; return true; }
+  function now(){ return ctx?ctx.currentTime:0; }
+  function tone(freq,dur,o){ o=o||{}; if(!ready)return; const t=now()+(o.delay||0); const os=ctx.createOscillator(); os.type=o.type||'sine'; os.frequency.setValueAtTime(freq,t); if(o.to) os.frequency.exponentialRampToValueAtTime(o.to,t+dur); const g=ctx.createGain(); const pk=o.gain||0.3; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(pk,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); os.connect(g); g.connect(o.bus||sfxG); os.start(t); os.stop(t+dur+0.03); }
+  function noise(dur,o){ o=o||{}; if(!ready)return; const t=now()+(o.delay||0); const s=ctx.createBufferSource(); s.buffer=noiseBuf; const f=ctx.createBiquadFilter(); f.type=o.type||'lowpass'; f.frequency.value=o.freq||1000; f.Q.value=o.q||1; const g=ctx.createGain(); const pk=o.gain||0.3; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(pk,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); s.connect(f); f.connect(g); g.connect(o.bus||sfxG); s.start(t); s.stop(t+dur+0.03); }
+  function startRain(){ rainSrc=ctx.createBufferSource(); rainSrc.buffer=noiseBuf; rainSrc.loop=true; const f=ctx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1400; f.Q.value=0.4; rainG=ctx.createGain(); rainG.gain.value=0; rainSrc.connect(f); f.connect(rainG); rainG.connect(ambG); rainSrc.start(); }
+  function startAmbientLoop(){ setInterval(()=>{ if(!ready||muted) return;
+    if(ambientMode==='day'){ if(Math.random()<0.32){ const b=1500+Math.random()*1500; tone(b,0.09,{type:'sine',gain:0.055,to:b*1.15,bus:ambG}); if(Math.random()<0.6) tone(b*1.5,0.08,{type:'sine',gain:0.04,to:b*1.6,delay:0.1,bus:ambG}); } }
+    else if(ambientMode==='night'){ if(Math.random()<0.5){ const f=2400+Math.random()*500; tone(f,0.035,{type:'square',gain:0.028,bus:ambG}); tone(f,0.035,{type:'square',gain:0.028,delay:0.08,bus:ambG}); } } }, 620); }
+  const PENT=[392,440,523,587,659,784]; let mi=2;
+  function startMusicLoop(){ setInterval(()=>{ if(!ready||muted) return; if(Math.random()<0.7){ mi=Math.max(0,Math.min(PENT.length-1, mi+(Math.random()<0.5?-1:1))); tone(PENT[mi],1.2,{type:'sine',gain:0.10,bus:musG}); if(Math.random()<0.3) tone(PENT[mi]/2,1.6,{type:'triangle',gain:0.06,bus:musG}); } }, 900); }
+  return {
+    init(){ if(ctx){ if(ctx.state==='suspended') ctx.resume(); return; } make(); },
+    correct(){ [523,659,784,1047].forEach((f,i)=>tone(f,0.18,{type:'triangle',gain:0.3,delay:i*0.08})); },
+    wrong(){ tone(330,0.16,{type:'sine',gain:0.2}); tone(247,0.22,{type:'sine',gain:0.2,delay:0.12}); },
+    chop(){ noise(0.14,{gain:0.35,type:'lowpass',freq:800}); tone(120,0.16,{type:'sine',gain:0.3}); },
+    collect(){ tone(880,0.1,{type:'triangle',gain:0.24}); tone(1320,0.1,{type:'triangle',gain:0.18,delay:0.06}); },
+    deposit(){ [660,880,1100].forEach((f,i)=>tone(f,0.12,{type:'triangle',gain:0.24,delay:i*0.06})); },
+    build(){ [392,523,659].forEach((f,i)=>tone(f,0.2,{type:'triangle',gain:0.26,delay:i*0.05})); noise(0.1,{gain:0.14,freq:500}); },
+    upgrade(){ [392,523,659,784,1047].forEach((f,i)=>tone(f,0.26,{type:'triangle',gain:0.27,delay:i*0.07})); },
+    fire(){ noise(0.5,{gain:0.28,type:'bandpass',freq:900,q:0.7}); tone(90,0.4,{type:'sawtooth',gain:0.11,to:200}); },
+    water(){ tone(800,0.12,{type:'sine',gain:0.2,to:1200}); noise(0.12,{gain:0.1,type:'bandpass',freq:2000,q:2}); },
+    fish(){ tone(500,0.15,{type:'triangle',gain:0.24,to:1000}); noise(0.2,{gain:0.14,type:'lowpass',freq:1200,delay:0.12}); },
+    sip(){ tone(500,0.1,{type:'sine',gain:0.16,to:720}); },
+    munch(){ noise(0.1,{gain:0.18,type:'lowpass',freq:600}); noise(0.1,{gain:0.16,type:'lowpass',freq:600,delay:0.14}); },
+    growl(t){ if(t==='raccoon'){ tone(720,0.12,{type:'square',gain:0.11}); tone(780,0.1,{type:'square',gain:0.11,delay:0.14}); } else { tone(90,0.5,{type:'sawtooth',gain:0.2,to:70}); noise(0.4,{gain:0.14,type:'lowpass',freq:400}); } },
+    thunder(){ noise(1.2,{gain:0.4,type:'lowpass',freq:300,q:0.5,bus:ambG}); tone(58,1.0,{type:'sine',gain:0.2,to:40,bus:ambG}); },
+    night(){ tone(196,0.8,{type:'sine',gain:0.18,to:147}); },
+    dawn(){ [294,392,494,587].forEach((f,i)=>tone(f,0.4,{type:'triangle',gain:0.2,delay:i*0.12})); },
+    fall(){ tone(300,0.5,{type:'sine',gain:0.2,to:120}); },
+    click(){ tone(660,0.05,{type:'square',gain:0.11}); },
+    setAmbient(mode){ ambientMode=mode; if(rainG&&ctx){ rainG.gain.cancelScheduledValues(now()); rainG.gain.linearRampToValueAtTime(mode==='storm'?0.5:0.0, now()+1.2); } if(mode==='storm') this.thunder(); },
+    setMute(m){ muted=m; if(master) master.gain.value=muted?0:0.85; },
+    toggleMute(){ this.setMute(!muted); return muted; },
+    isMuted(){ return muted; }
+  };
+})();
+['pointerdown','touchstart','keydown'].forEach(ev=>window.addEventListener(ev,()=>SFX.init()));
+
 scene.background=new THREE.Color('#bfe9f2');
 scene.fog=new THREE.Fog('#bfe9f2',190,480);
 const camera=new THREE.PerspectiveCamera(55,1,0.1,500);
@@ -302,7 +352,7 @@ function updatePiles(){
   for(let i=0;i<nWa;i++){ const r=Math.floor(i/3),c=i%3; const jug=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.36,0.8,8),M_WATER); jug.position.set(-0.5+c*0.55,0.4+r*0.85,0); jug.castShadow=true; pileWater.add(jug); }
 }
 // chop feedback: shake a grove tree and drop a log that hops then fades
-function chopFX(tree){
+function chopFX(tree){ SFX.chop();
   if(!tree||!tree.position) tree=groveTrees[Math.floor(Math.random()*groveTrees.length)]; const s1=performance.now();
   (function shake(){ const t=(performance.now()-s1)/650; if(t<1){ tree.rotation.z=Math.sin(t*32)*0.13*(1-t); requestAnimationFrame(shake);} else tree.rotation.z=0; })();
   const bx=tree.position.x+1.2, bz=tree.position.z+1, gy=terrainH(bx,bz);
@@ -460,7 +510,7 @@ const flames=new THREE.Group();
 ['#ffcf3f','#ff8a2f','#ff5a2f'].forEach((c,i)=>{ const fl=new THREE.Mesh(new THREE.ConeGeometry(0.7-i*0.18,1.6-i*0.3,8),new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.9,transparent:true,opacity:.9})); fl.position.y=0.9-i*0.15; flames.add(fl); });
 flames.position.set(FIRE.x,0.4,FIRE.z); flames.visible=false; scene.add(flames);
 const fireLight=new THREE.PointLight('#ff8a3f',0,16); fireLight.position.set(FIRE.x,2.2,FIRE.z); scene.add(fireLight);
-function lightFire(){ if(fireLit)return; fireLit=true; flames.visible=true; fireLight.intensity=1.6; fire.ring.material.color.set('#5fbf6a'); updateHUD(); checkAllGoals(); }
+function lightFire(){ if(fireLit)return; fireLit=true; flames.visible=true; fireLight.intensity=1.6; fire.ring.material.color.set('#5fbf6a'); updateHUD(); checkAllGoals(); SFX.fire(); }
 
 // Workbench — craft tools
 const BENCH={x:-22,z:6}; const bench=station(BENCH.x,BENCH.z,'🛠️','#b07a3a','workbench'); const SIGNS=[grove,camp,spring,coco,fish,fire,bench];
@@ -514,11 +564,11 @@ const FIRE_CHALLENGE={theme:'fire',cta:'Light it! 🔥',eyebrow:'Division Challe
 
 // --- proximity-triggered openers ---
 function openWater(){ if(!tools.jug){ showToast("You need a water jug 🪣 — craft one at the workbench 🛠️."); return; } const q=WATER_POOL[waterIdx++%WATER_POOL.length]; const after=+(inventory.water+q.answer).toFixed(1);
-  showChallengeModal(Object.assign({},q,{theme:'water',cta:'Fill up! 💧',eyebrow:'Volume Challenge',title:'💧 Collect Water',tolerance:0.001,winStory:`Splash! 💧 You fill <b>${q.answer} L</b> and sling it on your back. Haul it to 🏕️ camp!`,onSolve:()=>{ carrying.water+=q.answer; updateCarry(); }})); }
+  showChallengeModal(Object.assign({},q,{theme:'water',cta:'Fill up! 💧',eyebrow:'Volume Challenge',title:'💧 Collect Water',tolerance:0.001,winStory:`Splash! 💧 You fill <b>${q.answer} L</b> and sling it on your back. Haul it to 🏕️ camp!`,onSolve:()=>{ carrying.water+=q.answer; updateCarry(); SFX.water(); }})); }
 function openCoconuts(){ if(!tools.basket){ showToast("You need a basket 🧺 — craft one at the workbench 🛠️."); return; } const q=COCO_POOL[cocoIdx++%COCO_POOL.length]; const after=inventory.food+q.answer; const fri=Math.floor(Math.random()*FRUIT_SPECIES.length), fsp=FRUIT_SPECIES[fri], fNew=!found.fruit.has(fri);
-  showChallengeModal(Object.assign({},q,{theme:'food',cta:'Gather! 🧺',eyebrow:'Multiplication Challenge',title:'🍃 Gather Fruit',unit:'fruits',tolerance:0.001,winStory:`${fNew?'🎉 NEW FIND! ':'Yum! 🧺 '}You gather <b>${q.answer} ${fsp.name}</b>! <span style="opacity:.7">${fsp.fact}</span> Carry your haul to 🏕️ camp.`,onSolve:()=>{ carrying.food+=q.answer; found.fruit.add(fri); updateCarry(); }})); }
+  showChallengeModal(Object.assign({},q,{theme:'food',cta:'Gather! 🧺',eyebrow:'Multiplication Challenge',title:'🍃 Gather Fruit',unit:'fruits',tolerance:0.001,winStory:`${fNew?'🎉 NEW FIND! ':'Yum! 🧺 '}You gather <b>${q.answer} ${fsp.name}</b>! <span style="opacity:.7">${fsp.fact}</span> Carry your haul to 🏕️ camp.`,onSolve:()=>{ carrying.food+=q.answer; found.fruit.add(fri); updateCarry(); SFX.collect(); }})); }
 function openFishing(){ if(!tools.pole){ showToast("You need a fishing pole 🎣 — craft one at the workbench 🛠️."); return; } startFishing(); const q=FISH_POOL[fishIdx++%FISH_POOL.length]; const after=inventory.food+q.answer; const si=Math.floor(Math.random()*FISH_SPECIES.length), sp=FISH_SPECIES[si], isNew=!found.fish.has(si);
-  showChallengeModal(Object.assign({},q,{theme:'food',cta:'Cast line! 🎣',eyebrow:'Catch Challenge',title:'🎣 Catch Fish',unit:'fish',tolerance:0.001,winStory:`${isNew?'🎉 NEW CATCH! ':'Reel it in! 🎣 '}A <b>${sp.name}</b>! You bag <b>${q.answer}</b> fish. <span style="opacity:.7">${sp.fact}</span> Take your catch to 🏕️ camp.`,onSolve:()=>{ carrying.food+=q.answer; found.fish.add(si); caught=true; updateCarry(); }})); }
+  showChallengeModal(Object.assign({},q,{theme:'food',cta:'Cast line! 🎣',eyebrow:'Catch Challenge',title:'🎣 Catch Fish',unit:'fish',tolerance:0.001,winStory:`${isNew?'🎉 NEW CATCH! ':'Reel it in! 🎣 '}A <b>${sp.name}</b>! You bag <b>${q.answer}</b> fish. <span style="opacity:.7">${sp.fact}</span> Take your catch to 🏕️ camp.`,onSolve:()=>{ carrying.food+=q.answer; found.fish.add(si); caught=true; updateCarry(); SFX.fish(); }})); }
 function openFire(){ if(!tools.firestarter){ showToast("You need a fire drill 🔥 — craft one at the workbench 🛠️."); return; } if(fireLit){ showToast("Your fire's already blazing 🔥"); return; }
   if(inventory.wood<FIRE_LOGS){ showToast(`A fire needs about ${FIRE_LOGS} 🪵 — you have ${inventory.wood}. Chop more at the grove 🌲!`); return; }
   showChallengeModal(FIRE_CHALLENGE); }
@@ -538,25 +588,27 @@ function showChallengeModal(c){ active=c; wrongCount=0; hero.walkTarget=null;
 function closeModal(){ backdrop.classList.remove('open'); active=null; if(fishing) stopFishing(); }
 function checkAnswer(){ if(!active)return; const v=parseFloat(el.input.value);
   if(Number.isNaN(v)){ el.feedback.className='feedback hint'; el.feedback.textContent='Type a number first, then go!'; return; }
-  if(Math.abs(v-active.answer)<=(active.tolerance??0.001)){ el.feedback.className='feedback win'; el.feedback.textContent=`✅ Correct!  +${XP_PER_TASK} ⭐`; el.winStory.innerHTML=active.winStory; card.classList.add('solved'); inventory.xp+=XP_PER_TASK; if(typeof active.onSolve==='function')active.onSolve(); updateHUD(); }
-  else{ const h=active.hints[Math.min(wrongCount,active.hints.length-1)]; wrongCount++; el.feedback.className='feedback hint'; el.feedback.innerHTML='🤔 '+h; el.input.select(); } }
+  if(Math.abs(v-active.answer)<=(active.tolerance??0.001)){ el.feedback.className='feedback win'; el.feedback.textContent=`✅ Correct!  +${XP_PER_TASK} ⭐`; el.winStory.innerHTML=active.winStory; card.classList.add('solved'); inventory.xp+=XP_PER_TASK; if(typeof active.onSolve==='function')active.onSolve(); updateHUD(); SFX.correct(); }
+  else{ const h=active.hints[Math.min(wrongCount,active.hints.length-1)]; wrongCount++; el.feedback.className='feedback hint'; el.feedback.innerHTML='🤔 '+h; el.input.select(); SFX.wrong(); } }
 el.check.addEventListener('click',checkAnswer);
 el.input.addEventListener('keydown',e=>{ if(e.key==='Enter')checkAnswer(); });
 el.cont.addEventListener('click',()=>{ closeModal(); if(reopenCraft){ reopenCraft=false; if(lastMenuFn) lastMenuFn(); } });
+backdrop.addEventListener('click',e=>{ if(e.target===backdrop) closeModal(); });
 function openChop(tree){ if(!tools.axe){ showToast("You need an axe 🪓 — craft one at the workbench 🛠️."); return; } const q=CHOP_POOL[chopIndex%CHOP_POOL.length]; chopIndex++;
   showChallengeModal(Object.assign({},q,{theme:'wood',cta:'Chop! 🪓',eyebrow:'Chopping Challenge',title:'🌲 Chop Wood',unit:'logs',winStory:`Timber! 🪵 You hoist <b>${q.answer} logs</b> onto your back. Haul them to 🏕️ camp to stock up!`,onSolve:()=>{ carrying.wood+=q.answer; chopFX(tree); updateCarry(); }})); }
-function depositCarry(){ const w=carrying.wood,fo=carrying.food,wa=carrying.water; if(w+fo+wa<=0) return false; if(w)addResource('wood',w); if(fo){addResource('food',fo); collected.food+=fo;} if(wa){addResource('water',wa); collected.water=+(collected.water+wa).toFixed(2);} carrying.wood=carrying.food=carrying.water=0; updateCarry(); const p=[]; if(w)p.push(w+' 🪵'); if(fo)p.push(fo+' 🍎'); if(wa)p.push((+wa.toFixed(1))+' 💧'); showToast('🎒 Stocked up: '+p.join('  ')+' at camp!',3500); return true; }
+function depositCarry(){ const w=carrying.wood,fo=carrying.food,wa=carrying.water; if(w+fo+wa<=0) return false; if(w)addResource('wood',w); if(fo){addResource('food',fo); collected.food+=fo;} if(wa){addResource('water',wa); collected.water=+(collected.water+wa).toFixed(2);} carrying.wood=carrying.food=carrying.water=0; updateCarry(); const p=[]; if(w)p.push(w+' 🪵'); if(fo)p.push(fo+' 🍎'); if(wa)p.push((+wa.toFixed(1))+' 💧'); showToast('🎒 Stocked up: '+p.join('  ')+' at camp!',3500); SFX.deposit(); return true; }
 function setNeed(k,v){ NEEDS[k]=Math.max(0,Math.min(100,v)); }
 function updateNeeds(){ ['thirst','hunger','warmth'].forEach(k=>{ const el=document.getElementById('need-'+k); if(!el)return; const v=NEEDS[k], bar=el.querySelector('i'); bar.style.width=v.toFixed(1)+'%'; bar.style.background=v>50?'#5fbf6a':v>25?'#e6b23f':'#e8552f'; el.classList.toggle('low',v<=25); }); }
-function drink(){ if(NEEDS.thirst>=98){ showToast('💧 Not thirsty right now.',1600); return; } if(inventory.water<1){ showToast('💧 No water to drink — fill up at the 💧 spring and haul it to 🏕️ camp.',3200); return; } addResource('water',-1); setNeed('thirst',NEEDS.thirst+55); updateNeeds(); showToast('💧 Glug glug! You drink 1 L. Thirst quenched.',1800); }
-function eat(){ if(NEEDS.hunger>=98){ showToast('🍖 Not hungry right now.',1600); return; } if(inventory.food<1){ showToast('🍖 No food to eat — fish 🎣 or forage 🍃, then haul it to 🏕️ camp.',3200); return; } addResource('food',-1); setNeed('hunger',NEEDS.hunger+45); updateNeeds(); showToast('🍖 Yum! You eat a meal. Hunger eased.',1800); }
+function drink(){ if(NEEDS.thirst>=98){ showToast('💧 Not thirsty right now.',1600); return; } if(inventory.water<1){ showToast('💧 No water to drink — fill up at the 💧 spring and haul it to 🏕️ camp.',3200); return; } addResource('water',-1); setNeed('thirst',NEEDS.thirst+55); updateNeeds(); SFX.sip(); showToast('💧 Glug glug! You drink 1 L. Thirst quenched.',1800); }
+function eat(){ if(NEEDS.hunger>=98){ showToast('🍖 Not hungry right now.',1600); return; } if(inventory.food<1){ showToast('🍖 No food to eat — fish 🎣 or forage 🍃, then haul it to 🏕️ camp.',3200); return; } addResource('food',-1); setNeed('hunger',NEEDS.hunger+45); updateNeeds(); SFX.munch(); showToast('🍖 Yum! You eat a meal. Hunger eased.',1800); }
 function tickNeeds(dt){ if(collapsing)return; const nearFire=fireLit&&Math.hypot(hero.pos.x-FIRE.x,hero.pos.z-FIRE.z)<9;
   if(needGrace>0){ needGrace-=dt; } else { setNeed('thirst',NEEDS.thirst-NEED_DRAIN.thirst*dt); setNeed('hunger',NEEDS.hunger-NEED_DRAIN.hunger*dt); setNeed('warmth', nearFire?NEEDS.warmth+WARM_RATE*dt:NEEDS.warmth-NEED_DRAIN.warmth*dt); }
   ['thirst','hunger','warmth'].forEach(k=>{ if(NEEDS[k]<=30&&!warned[k]){ warned[k]=true; showToast(WARN[k],3600); } if(NEEDS[k]>45) warned[k]=false; });
   for(const k of ['thirst','hunger','warmth']){ if(NEEDS[k]<=0){ collapse(k); break; } }
   updateNeeds(); }
-function collapse(k){ if(collapsing)return; collapsing=true; hero.walkTarget=null; if(fishing)stopFishing(); const why={thirst:'too thirsty',hunger:'too hungry',warmth:'too cold'}[k]; const dropped=(carrying.wood+carrying.food+carrying.water)>0; carrying.wood=carrying.food=carrying.water=0; updateCarry(); document.getElementById('rest-msg').innerHTML=`You got <b>${why}</b> and had to rest. ☀️ A new dawn breaks over the island!<br><br>Your camp, tools, discoveries and stockpile are all safe.${dropped?' <span style="opacity:.75">(You dropped the materials you were carrying.)</span>':''}`; document.getElementById('rest').classList.add('open'); }
+function collapse(k){ if(collapsing)return; collapsing=true; SFX.fall(); hero.walkTarget=null; if(fishing)stopFishing(); const why={thirst:'too thirsty',hunger:'too hungry',warmth:'too cold'}[k]; const dropped=(carrying.wood+carrying.food+carrying.water)>0; carrying.wood=carrying.food=carrying.water=0; updateCarry(); document.getElementById('rest-msg').innerHTML=`You got <b>${why}</b> and had to rest. ☀️ A new dawn breaks over the island!<br><br>Your camp, tools, discoveries and stockpile are all safe.${dropped?' <span style="opacity:.75">(You dropped the materials you were carrying.)</span>':''}`; document.getElementById('rest').classList.add('open'); }
 document.getElementById('rest-go').addEventListener('click',()=>{ NEEDS.thirst=NEEDS.hunger=NEEDS.warmth=75; warned.thirst=warned.hunger=warned.warmth=false; needGrace=12; collapsing=false; document.getElementById('rest').classList.remove('open'); updateNeeds(); });
+const soundBtn=document.getElementById('sound-btn'); soundBtn.addEventListener('click',()=>{ SFX.init(); const m=SFX.toggleMute(); soundBtn.textContent=m?'🔇':'🔊'; });
 document.getElementById('need-thirst').addEventListener('click',drink);
 document.getElementById('need-hunger').addEventListener('click',eat);
 function handleCampClick(){ depositCarry(); openCampMenu(); }
@@ -628,8 +680,9 @@ function closeMenu(){ craftBackdrop.classList.remove('open'); }
 function pickItem(it){
   if(it.instant){ it.act&&it.act(); if(lastMenuFn) lastMenuFn(); return; }
   closeMenu();
-  showChallengeModal(Object.assign({},it.challenge,{onSolve:()=>{ spend(it.costs||{}); if(it.build)it.build(); if(it.own)it.own(); reopenCraft=true; }})); }
+  showChallengeModal(Object.assign({},it.challenge,{onSolve:()=>{ spend(it.costs||{}); if(it.build)it.build(); if(it.own)it.own(); SFX.build(); reopenCraft=true; }})); }
 document.getElementById('craft-close').addEventListener('click',closeMenu);
+craftBackdrop.addEventListener('click',e=>{ if(e.target===craftBackdrop) closeMenu(); });
 
 // ---- WORKBENCH menu (tools) ----
 function openWorkbench(){ lastMenuFn=openWorkbench; openMenu({eyebrow:'Workbench',title:'🛠️ Craft Tools',sub:'Costs are in wood — chop a 🌲 tree with your axe, then haul the logs to 🏕️ camp to bank them.',
@@ -705,7 +758,7 @@ function setCampLevel(n){ clearGroup(campStructure); const lv=CAMP_LEVELS[n]; if
 function upgradeCosts(lv){ const c={}; if(lv.wood) c.wood=lv.wood; if(lv.food) c.food=lv.food; return c; }
 function doUpgrade(){ const next=CAMP_LEVELS[campLevel+1]; if(!next) return; const c=upgradeCosts(next);
   if(inventory.xp<next.xp || !canAfford(c)) return;
-  spend(c); campLevel++; setCampLevel(campLevel); updateHUD(); checkAllGoals(); showToast(`🏕️ Camp upgraded to Lvl ${campLevel}: ${next.name}!`,4500); }
+  spend(c); campLevel++; setCampLevel(campLevel); updateHUD(); checkAllGoals(); SFX.upgrade(); showToast(`🏕️ Camp upgraded to Lvl ${campLevel}: ${next.name}!`,4500); }
 function openCampMenu(){ lastMenuFn=openCampMenu; const next=CAMP_LEVELS[campLevel+1]; const items=[];
   if(next){ items.push({icon:'⬆️',name:'Upgrade to '+next.name,desc:'your Level '+(campLevel+1)+' home',costs:upgradeCosts(next),reqXp:next.xp,instant:true,owned:()=>false,act:doUpgrade}); }
   else items.push({icon:'🏝️',name:'Island Villa',desc:'your home is maxed out!',costs:{},owned:()=>true,ownedLabel:'max level',instant:true,act:()=>{}});
@@ -729,6 +782,7 @@ function renderJournal(){ journalList.innerHTML='';
 function openJournal(){ hero.walkTarget=null; renderJournal(); journalBackdrop.classList.add('open'); }
 document.getElementById('journal-btn').addEventListener('click',openJournal);
 document.getElementById('journal-close').addEventListener('click',()=>journalBackdrop.classList.remove('open'));
+journalBackdrop.addEventListener('click',e=>{ if(e.target===journalBackdrop) journalBackdrop.classList.remove('open'); });
 
 // ---- SURVIVAL GUIDE: ordered, self-checking how-to-survive book ----
 const GUIDE=[
@@ -750,6 +804,7 @@ function renderGuide(){ guideList.innerHTML=''; let nextFound=false;
 function openGuide(){ hero.walkTarget=null; renderGuide(); guideBackdrop.classList.add('open'); document.getElementById('guide-btn').classList.remove('has-new'); }
 document.getElementById('guide-btn').addEventListener('click',openGuide);
 document.getElementById('guide-close').addEventListener('click',()=>guideBackdrop.classList.remove('open'));
+guideBackdrop.addEventListener('click',e=>{ if(e.target===guideBackdrop) guideBackdrop.classList.remove('open'); });
 
 /* --------------------------- 7) BUILD ------------------------------- */
 function buildFloor(){ const floor=new THREE.Group(); const planks=5,gap=0.08,pw=(SHELTER_D-gap*(planks-1))/planks;
@@ -963,7 +1018,7 @@ function makeBoar(){ const g=new THREE.Group();
 }
 function spawnAnimal(type){ if(boar) return; const cfg=ANIMALS[type]; const b=(type==='raccoon')?makeRaccoon():makeBoar(); b.type=type; b.cfg=cfg;
   b.group.position.set(cfg.spawn.x, terrainH(cfg.spawn.x,cfg.spawn.z), cfg.spawn.z); scene.add(b.group);
-  b.state='approach'; b.t=0; b.target={x:pileFood.position.x,z:pileFood.position.z}; boar=b; boarStole=0; lastNightStorm=false; }
+  b.state='approach'; b.t=0; b.target={x:pileFood.position.x,z:pileFood.position.z}; boar=b; boarStole=0; lastNightStorm=false; SFX.growl(type); }
 function decideAnimal(b){ b.t=0; const cfg=b.cfg;
   if(inventory.food<=0){ showToast(cfg.noFoodMsg,3400); b.state='sniff'; }
   else if(cfg.safe()){ showToast(cfg.safeMsg(),4000); b.state='sniff'; }
@@ -983,7 +1038,7 @@ function updateAnimal(dt){ const b=boar; b.t+=dt; const cfg=b.cfg;
 }
 
 // ---- sleep -> night -> dawn ----
-function sleep(){ if(sleeping||boar||storm) return; closeMenu(); sleeping=true; nightTarget=1;
+function sleep(){ if(sleeping||boar||storm) return; closeMenu(); sleeping=true; nightTarget=1; SFX.night(); SFX.setAmbient('night');
   showToast('🌙 You settle into your shelter. Night falls…',2600);
   const order={'':'boar',boar:'storm',storm:'raccoon',raccoon:'boar'}; const threat=order[lastThreat]||'boar'; lastThreat=threat;
   setTimeout(()=>{
@@ -991,7 +1046,7 @@ function sleep(){ if(sleeping||boar||storm) return; closeMenu(); sleeping=true; 
     else if(threat==='raccoon'){ showToast('🦝 Tiny paws scratch in the dark — a raccoon is sneaking toward your food!',3200); setTimeout(()=>spawnAnimal('raccoon'),1500); }
     else { showToast('⛈️ Dark clouds roll in — a cold storm is coming! A roof keeps you dry and your fire alive.',3800); setTimeout(startStorm,1700); }
   }, 2300); }
-function dawn(){ nightTarget=0; day++; updateDayBadge(); needGrace=15;
+function dawn(){ nightTarget=0; day++; updateDayBadge(); needGrace=15; SFX.dawn(); SFX.setAmbient('day');
   setTimeout(()=>{ sleeping=false;
     if(boarStole>0){ const had=boarHad, took=boarStole, left=had-took;
       showChallengeModal({theme:'food',cta:'Got it! ☀️',eyebrow:'Morning Math • Subtraction',title:'☀️ Dawn Recap',unit:'food',story:`While you slept, a boar made off with <b>${took} food</b>. You had <b>${had}</b> before bed. How many are left this morning?`,diagram:`${had} − ${took} = ?`,answer:left,tolerance:0.001,hints:['Take away what the boar stole.',`Start at ${had} and count back ${took}.`,`${had} − ${took} = ${left}.`],winStory:`Right — <b>${left} food</b> left. Tonight, build a 🚧 food fence or keep your 🔥 fire lit to keep boars out!`});
@@ -1023,7 +1078,7 @@ function makeRain(){ const N=520, geo=new THREE.BufferGeometry(), pos=new Float3
   for(let i=0;i<N;i++){ pos[i*3]=CAMP.x+(Math.random()-0.5)*70; pos[i*3+1]=Math.random()*42; pos[i*3+2]=CAMP.z+(Math.random()-0.5)*70; }
   geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
   const pts=new THREE.Points(geo,new THREE.PointsMaterial({color:'#cfe2ff',size:0.32,transparent:true,opacity:0.85})); pts.visible=false; scene.add(pts); return pts; }
-function startStorm(){ if(!rain) rain=makeRain(); rain.visible=true; lastNightStorm=true; storm={t:0,phase:'rain'}; }
+function startStorm(){ if(!rain) rain=makeRain(); rain.visible=true; lastNightStorm=true; storm={t:0,phase:'rain'}; SFX.setAmbient('storm'); }
 function resolveStorm(){ storm.phase='done';
   if(roofBuilt){ NEEDS.warmth=Math.max(NEEDS.warmth,72); updateNeeds(); showToast('⛺ Snug under your roof, you stay warm and dry through the storm!',4000); }
   else { if(fireLit){ fireLit=false; flames.visible=false; fireLight.intensity=0; fire.ring.material.color.set('#e8552f'); updateHUD(); }
@@ -1073,7 +1128,7 @@ function gatherState(){ return { v:1,
   tools:{axe:tools.axe,pole:tools.pole,jug:tools.jug,basket:tools.basket,firestarter:tools.firestarter},
   found:{fish:[...found.fish],fruit:[...found.fruit]},
   decor:Object.keys(decorOwned).filter(k=>decorOwned[k]),
-  won, day, fence:foodFenceBuilt, roof:roofBuilt, cache:cacheBuilt, lt:lastThreat, idx:{w:waterIdx,c:cocoIdx,f:fishIdx,ch:chopIndex} }; }
+  won, day, fence:foodFenceBuilt, roof:roofBuilt, cache:cacheBuilt, lt:lastThreat, mute:SFX.isMuted(), idx:{w:waterIdx,c:cocoIdx,f:fishIdx,ch:chopIndex} }; }
 
 function applyState(st){ if(!st||st.v!==1) return false;
   if(st.inv) Object.assign(inventory, st.inv);
@@ -1091,6 +1146,7 @@ function applyState(st){ if(!st||st.v!==1) return false;
   roofBuilt=false; if(roofMeshG){scene.remove(roofMeshG); roofMeshG=null;} if(st.roof) buildRoof();
   cacheBuilt=false; if(cacheMeshG){scene.remove(cacheMeshG); cacheMeshG=null;} if(st.cache) buildCache();
   if(rain) rain.visible=false; storm=null; lastNightStorm=false; lastThreat=st.lt||'';
+  if(st.mute){ SFX.setMute(true); const sb=document.getElementById('sound-btn'); if(sb) sb.textContent='🔇'; }
   (st.decor||[]).forEach(k=>{ const d=DECOR.find(x=>x.key===k); if(d){ decorOwned[k]=true; d.build(); } });
   if(st.fire){ fireLit=false; lightFire(); }
   needGrace=8; collapsing=false;
