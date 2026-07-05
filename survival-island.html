@@ -791,7 +791,7 @@ const GUIDE=[
   {t:'Collect Water', how:'Fresh water is vital — you can only go a few days without it.', go:'Craft a 🪣 water jug at the workbench, then fill up at the 💧 spring.', done:()=>collected.water>0},
   {t:'Make Fire', how:'Fire means warmth, cooked food, and safety through the night.', go:'Craft a 🔥 fire drill, chop 🪵 wood, then light the 🔥 fire pit.', done:()=>fireLit},
   {t:'Upgrade Your Camp', how:'A sturdier home shelters you better. Earn XP by surviving, then rebuild bigger.', go:'Gather to earn ⭐ XP & 🪵 wood, then upgrade to a real hut at 🏕️ camp (Level 3).', done:()=>campLevel>=3},
-  {t:'Grow a Garden', how:'Once settled, grow your own food so you never go hungry again.', go:'Open your 🏕️ camp menu and build the 🌻 Garden Plot.', done:()=>!!decorOwned.garden},
+  {t:'Grow a Garden', how:'Grow your own food — crops regrow, so you can farm as much as you like.', go:'Visit the 🌱 Garden: tap a plot to plant seeds, water them, then harvest food!', done:()=>gardenHarvests>0},
   {t:'Build Your Island Home', how:"You've mastered survival — now make this island truly yours.", go:'Keep earning XP & materials to reach the 🏝️ Island Villa (Level 6).', done:()=>campLevel>=6},
 ];
 const guideBackdrop=document.getElementById('guide-backdrop'), guideList=document.getElementById('guide-list');
@@ -863,8 +863,13 @@ function pUp(e){ if(!down)return; down=false; if(dragging||anyOpen())return;
       if(d<=6.5){ chopTarget=null; openChop(g); }
       else{ const ang=Math.atan2(hero.pos.x-g.position.x,hero.pos.z-g.position.z); hero.walkTarget=new THREE.Vector3(g.position.x+Math.sin(ang)*4.2,0,g.position.z+Math.cos(ang)*4.2); chopTarget=g; showToast('🌲 Heading over to chop that tree…',1400); }
       keys.clear(); return; } }
+  const gh=raycaster.intersectObjects(plotHits)[0];
+  if(gh){ const p=gh.object.userData.plot; const d=Math.hypot(hero.pos.x-p.x,hero.pos.z-p.z);
+    if(d<=6.5){ pendingPlot=null; plotAction(p); }
+    else{ const ang=Math.atan2(hero.pos.x-p.x,hero.pos.z-p.z); hero.walkTarget=new THREE.Vector3(p.x+Math.sin(ang)*3.6,0,p.z+Math.cos(ang)*3.6); pendingPlot=p; showToast('🌱 Heading to the garden…',1300); }
+    keys.clear(); return; }
   const hit=raycaster.intersectObject(terrain)[0];
-  if(hit){ chopTarget=null; const p=hit.point.clone(); const d=Math.hypot(p.x,p.z); if(d>WALK_R){ p.x*=WALK_R/d; p.z*=WALK_R/d; } hero.walkTarget=new THREE.Vector3(p.x,0,p.z); keys.clear(); } }
+  if(hit){ chopTarget=null; pendingPlot=null; const p=hit.point.clone(); const d=Math.hypot(p.x,p.z); if(d>WALK_R){ p.x*=WALK_R/d; p.z*=WALK_R/d; } hero.walkTarget=new THREE.Vector3(p.x,0,p.z); keys.clear(); } }
 canvas.addEventListener('pointerdown',pDown); canvas.addEventListener('pointermove',pMove); canvas.addEventListener('pointerup',pUp); canvas.addEventListener('pointercancel',()=>down=false);
 canvas.addEventListener('wheel',e=>{ orbit.radius+=e.deltaY*0.02; e.preventDefault(); },{passive:false});
 canvas.addEventListener('touchmove',e=>{ if(e.touches.length===2){ const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); if(pinchDist)orbit.radius+=(pinchDist-d)*0.05; pinchDist=d; e.preventDefault(); } },{passive:false});
@@ -891,14 +896,14 @@ function updateHero(dt){
   if(keys.has('arrowdown')||keys.has('s'))iz+=1;
   if(keys.has('arrowleft')||keys.has('a'))ix-=1;
   if(keys.has('arrowright')||keys.has('d'))ix+=1;
-  if(ix||iz){ hero.walkTarget=null; chopTarget=null;
+  if(ix||iz){ hero.walkTarget=null; chopTarget=null; pendingPlot=null;
     const fwd=new THREE.Vector3().subVectors(orbit.target,camera.position); fwd.y=0; fwd.normalize();
     const right=new THREE.Vector3(fwd.z,0,-fwd.x);
     mvx=right.x*ix+fwd.x*(-iz); mvz=right.z*ix+fwd.z*(-iz);
     const l=Math.hypot(mvx,mvz)||1; mvx/=l; mvz/=l;
   } else if(hero.walkTarget){
     const dx=hero.walkTarget.x-hero.pos.x, dz=hero.walkTarget.z-hero.pos.z, d=Math.hypot(dx,dz);
-    if(d>0.2){ mvx=dx/d; mvz=dz/d; } else { hero.walkTarget=null; if(chopTarget){ const g=chopTarget; chopTarget=null; openChop(g); } }
+    if(d>0.2){ mvx=dx/d; mvz=dz/d; } else { hero.walkTarget=null; if(chopTarget){ const g=chopTarget; chopTarget=null; openChop(g); } if(pendingPlot){ const pp=pendingPlot; pendingPlot=null; plotAction(pp); } }
   }
   const moving=(mvx||mvz);
   if(moving && !anyOpen()){
@@ -924,6 +929,52 @@ function updateHero(dt){
 function resize(){ renderer.setSize(innerWidth,innerHeight); camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }
 addEventListener('resize',resize); resize();
 const clock=new THREE.Clock(); let elapsed=0;
+/* --------------------------- FARMING (renewable challenge loop) --------------------------- */
+const GARDEN={x:-30,z:30};
+const plots=[], plotHits=[]; let pendingPlot=null, gardenHarvests=0;
+function cropVisual(stage){ const g=new THREE.Group(); if(stage===0) return g;
+  const leaf=new THREE.MeshStandardMaterial({color:'#4a8c3f',roughness:1});
+  if(stage===1){ for(let i=0;i<3;i++){ const s=new THREE.Mesh(new THREE.ConeGeometry(0.12,0.5,5),leaf); s.position.set((i-1)*0.45,0.35,(i%2)*0.3-0.15); s.castShadow=true; g.add(s); } }
+  else if(stage===2){ const st=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,0.9,5),leaf); st.position.y=0.45; g.add(st); for(let i=0;i<4;i++){ const b=new THREE.Mesh(new THREE.SphereGeometry(0.34,7,6),leaf); b.scale.y=0.7; b.position.set((i%2)*0.7-0.35,0.55,Math.floor(i/2)*0.7-0.35); b.castShadow=true; g.add(b); } }
+  else { for(let i=0;i<4;i++){ const b=new THREE.Mesh(new THREE.SphereGeometry(0.4,7,6),leaf); b.scale.y=0.7; b.position.set((i%2)*0.8-0.4,0.62,Math.floor(i/2)*0.8-0.4); b.castShadow=true; g.add(b); } for(let i=0;i<3;i++){ const f=new THREE.Mesh(new THREE.SphereGeometry(0.2,8,7),new THREE.MeshStandardMaterial({color:'#e0402f',roughness:.6})); f.position.set((Math.random()-0.5)*1.2,0.7+Math.random()*0.3,(Math.random()-0.5)*1.2); f.castShadow=true; g.add(f); } }
+  return g; }
+function setStage(p,st){ p.stage=st; if(p.cropGroup) p.group.remove(p.cropGroup); p.cropGroup=cropVisual(st); p.group.add(p.cropGroup); if(st>0) popIn(p.cropGroup); }
+function buildGarden(){ const soilM=new THREE.MeshStandardMaterial({color:'#5b3d24',roughness:1}), rimM=new THREE.MeshStandardMaterial({color:'#7a4a25',roughness:1}), furM=new THREE.MeshStandardMaterial({color:'#4a3018',roughness:1});
+  [[-2.7,-2.7],[2.7,-2.7],[-2.7,2.7],[2.7,2.7]].forEach(([dx,dz])=>{
+    const wx=GARDEN.x+dx, wz=GARDEN.z+dz; const group=new THREE.Group(); group.position.set(wx,terrainH(wx,wz),wz);
+    const rim=new THREE.Mesh(new THREE.BoxGeometry(2.5,0.2,2.5),rimM); rim.position.y=0.08; rim.receiveShadow=true; group.add(rim);
+    const soil=new THREE.Mesh(new THREE.BoxGeometry(2.3,0.35,2.3),soilM); soil.position.y=0.2; soil.receiveShadow=true; group.add(soil);
+    for(let r=-1;r<=1;r++){ const fu=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.08,0.22),furM); fu.position.set(0,0.38,r*0.62); group.add(fu); }
+    const hit=new THREE.Mesh(new THREE.BoxGeometry(2.5,2.4,2.5),new THREE.MeshBasicMaterial({visible:false})); hit.position.y=1.0; group.add(hit);
+    scene.add(group); const p={x:wx,z:wz,group,cropGroup:null,stage:0}; hit.userData.plot=p; plotHits.push(hit); plots.push(p);
+  });
+  const sign=makeSpot(GARDEN.x,GARDEN.z,'🌱','#7cc36a','garden'); SIGNS.push(sign);
+}
+let plantIdx=0, waterGIdx=0, harvestIdx=0;
+const PLANT_POOL=[
+  {story:"Plant <b>3</b> rows with <b>4</b> seeds in each row. How many seeds do you plant?",diagram:"3 × 4 = ?",answer:12,tolerance:0.001,unit:'seeds',eyebrow:'Multiply • Gr 4',hints:["Equal rows means multiply.","3 groups of 4.","3 × 4 = 12."]},
+  {story:"You plant <b>5</b> rows of <b>2</b> seeds. How many seeds in all?",diagram:"5 × 2 = ?",answer:10,tolerance:0.001,unit:'seeds',eyebrow:'Multiply • Gr 4',hints:["5 groups of 2.","Count by 2s five times.","5 × 2 = 10."]},
+  {story:"A bed fits <b>6</b> seeds per row across <b>3</b> rows. How many seeds?",diagram:"6 × 3 = ?",answer:18,tolerance:0.001,unit:'seeds',eyebrow:'Multiply • Gr 4',hints:["6 in each of 3 rows.","6 × 3.","That is 18."]},
+  {story:"You plant <b>4</b> rows of <b>4</b>, then <b>1</b> more row of <b>4</b>. How many seeds total?",diagram:"(4 × 4) + 4 = ?",answer:20,tolerance:0.001,unit:'seeds',eyebrow:'Multi-step • Gr 5 preview',hints:["First 4 × 4 = 16.","Then add one more row of 4.","16 + 4 = 20."]},
+];
+const WATERG_POOL=[
+  {story:"You have <b>12 L</b> of water to share equally among <b>4</b> plots. How many liters for each?",diagram:"12 ÷ 4 = ?",answer:3,tolerance:0.001,unit:'L',eyebrow:'Divide • Gr 4',hints:["Share 12 equally into 4.","What times 4 makes 12?","12 ÷ 4 = 3."]},
+  {story:"You pour <b>20 L</b> evenly over <b>5</b> plots. How many liters each?",diagram:"20 ÷ 5 = ?",answer:4,tolerance:0.001,unit:'L',eyebrow:'Divide • Gr 4',hints:["Split 20 into 5 equal parts.","5 × ? = 20.","20 ÷ 5 = 4."]},
+  {story:"<b>18 L</b> of water shared equally across <b>6</b> plots. How much per plot?",diagram:"18 ÷ 6 = ?",answer:3,tolerance:0.001,unit:'L',eyebrow:'Divide • Gr 4',hints:["18 split into 6 groups.","6 × 3 = 18.","So 18 ÷ 6 = 3."]},
+  {story:"You have <b>10 L</b> for <b>4</b> plots, poured equally. How many liters each?",diagram:"10 ÷ 4 = ?",answer:2.5,tolerance:0.001,unit:'L',eyebrow:'Decimals • Gr 5 preview',hints:["10 split into 4 will not be a whole number.","4 goes into 10 two times, with 2 left over.","The 2 left ÷ 4 = 0.5, so 2.5 L each."]},
+];
+const HARVEST_POOL=[
+  {story:"This bed has <b>3</b> plants, each grew <b>2</b> tomatoes. How many tomatoes?",diagram:"3 × 2 = ?",answer:6,tolerance:0.001,unit:'food',eyebrow:'Multiply • Gr 4',hints:["3 plants, 2 each.","3 × 2.","6 tomatoes."]},
+  {story:"<b>3</b> plants each grew <b>3</b> berries. How many berries in all?",diagram:"3 × 3 = ?",answer:9,tolerance:0.001,unit:'food',eyebrow:'Multiply • Gr 4',hints:["3 groups of 3.","3 × 3.","9 berries."]},
+  {story:"You pick <b>2</b> rows of <b>4</b> carrots. How many carrots?",diagram:"2 × 4 = ?",answer:8,tolerance:0.001,unit:'food',eyebrow:'Multiply • Gr 4',hints:["2 rows, 4 each.","2 × 4.","8 carrots."]},
+  {story:"<b>4</b> plants give <b>2</b> peppers each, but you eat <b>1</b> on the way home. How many do you store?",diagram:"(4 × 2) − 1 = ?",answer:7,tolerance:0.001,unit:'food',eyebrow:'Multi-step • Gr 5 preview',hints:["First 4 × 2 = 8.","Then take away the 1 you ate.","8 − 1 = 7."]},
+];
+function plantChallenge(p){ const q=PLANT_POOL[plantIdx++%PLANT_POOL.length]; showChallengeModal(Object.assign({},q,{theme:'food',cta:'Plant! 🌱',title:'🌱 Plant Seeds',winStory:'🌱 Seeds are in the soil! Come back with water to help them grow.',onSolve:()=>{ setStage(p,1); SFX.build(); }})); }
+function waterChallenge(p){ const q=WATERG_POOL[waterGIdx++%WATERG_POOL.length]; showChallengeModal(Object.assign({},q,{theme:'water',cta:'Water! 💧',title:'💧 Water the Crop',winStory:'💧 Watered! Your crop grows taller.',onSolve:()=>{ setStage(p,Math.min(3,p.stage+1)); SFX.water(); }})); }
+function harvestChallenge(p){ const q=HARVEST_POOL[harvestIdx++%HARVEST_POOL.length]; showChallengeModal(Object.assign({},q,{theme:'food',cta:'Harvest! 🧺',title:'🧺 Harvest',winStory:`🧺 Fresh food! You gather <b>${q.answer}</b> and sling it on your back — haul it to 🏕️ camp.`,onSolve:()=>{ carrying.food+=q.answer; gardenHarvests++; updateCarry(); SFX.collect(); setStage(p,0); }})); }
+function plotAction(p){ if(p.stage===0) plantChallenge(p); else if(p.stage<3) waterChallenge(p); else harvestChallenge(p); }
+buildGarden();
+
 /* --------------------------- DAY / NIGHT + WILDLIFE --------------------------- */
 let nightLevel=0, nightTarget=0;
 function applyNight(t){
@@ -1106,6 +1157,7 @@ function animate(){ const dt=Math.min(clock.getDelta(),0.05); elapsed+=dt;
   if(fireLit){ flames.children.forEach((f,i)=>{ f.scale.y=1+Math.sin(elapsed*12+i)*0.18; f.scale.x=1+Math.cos(elapsed*10+i)*0.08; }); fireLight.intensity=1.4+Math.sin(elapsed*15)*0.4; }
   clouds.forEach((c,i)=>{ c.position.x+=0.01+i*0.003; if(c.position.x>48)c.position.x=-48; });
   updateNight(dt); if(boar) updateAnimal(dt); if(storm) updateStorm(dt);
+  for(const p of plots){ if(p.stage===3&&p.cropGroup) p.cropGroup.position.y=0.05+Math.sin(elapsed*3+p.x)*0.06; }
   updateHero(dt);
   if(!anyOpen()) tickNeeds(dt); updateNeeds();
   applyCamera(); renderer.render(scene,camera); requestAnimationFrame(animate);
@@ -1128,7 +1180,7 @@ function gatherState(){ return { v:1,
   tools:{axe:tools.axe,pole:tools.pole,jug:tools.jug,basket:tools.basket,firestarter:tools.firestarter},
   found:{fish:[...found.fish],fruit:[...found.fruit]},
   decor:Object.keys(decorOwned).filter(k=>decorOwned[k]),
-  won, day, fence:foodFenceBuilt, roof:roofBuilt, cache:cacheBuilt, lt:lastThreat, mute:SFX.isMuted(), idx:{w:waterIdx,c:cocoIdx,f:fishIdx,ch:chopIndex} }; }
+  won, day, fence:foodFenceBuilt, roof:roofBuilt, cache:cacheBuilt, lt:lastThreat, mute:SFX.isMuted(), garden:plots.map(p=>p.stage), gh:gardenHarvests, idx:{w:waterIdx,c:cocoIdx,f:fishIdx,ch:chopIndex} }; }
 
 function applyState(st){ if(!st||st.v!==1) return false;
   if(st.inv) Object.assign(inventory, st.inv);
@@ -1147,6 +1199,7 @@ function applyState(st){ if(!st||st.v!==1) return false;
   cacheBuilt=false; if(cacheMeshG){scene.remove(cacheMeshG); cacheMeshG=null;} if(st.cache) buildCache();
   if(rain) rain.visible=false; storm=null; lastNightStorm=false; lastThreat=st.lt||'';
   if(st.mute){ SFX.setMute(true); const sb=document.getElementById('sound-btn'); if(sb) sb.textContent='🔇'; }
+  gardenHarvests=st.gh||0; if(Array.isArray(st.garden)) st.garden.forEach((stg,i)=>{ if(plots[i]) setStage(plots[i], stg||0); });
   (st.decor||[]).forEach(k=>{ const d=DECOR.find(x=>x.key===k); if(d){ decorOwned[k]=true; d.build(); } });
   if(st.fire){ fireLit=false; lightFire(); }
   needGrace=8; collapsing=false;
