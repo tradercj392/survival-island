@@ -593,6 +593,7 @@ function checkAnswer(){ if(!active)return; const v=parseFloat(el.input.value);
 el.check.addEventListener('click',checkAnswer);
 el.input.addEventListener('keydown',e=>{ if(e.key==='Enter')checkAnswer(); });
 el.cont.addEventListener('click',()=>{ closeModal(); if(reopenCraft){ reopenCraft=false; if(lastMenuFn) lastMenuFn(); } });
+backdrop.addEventListener('click',e=>{ if(e.target===backdrop) closeModal(); });
 function openChop(tree){ if(!tools.axe){ showToast("You need an axe 🪓 — craft one at the workbench 🛠️."); return; } const q=CHOP_POOL[chopIndex%CHOP_POOL.length]; chopIndex++;
   showChallengeModal(Object.assign({},q,{theme:'wood',cta:'Chop! 🪓',eyebrow:'Chopping Challenge',title:'🌲 Chop Wood',unit:'logs',winStory:`Timber! 🪵 You hoist <b>${q.answer} logs</b> onto your back. Haul them to 🏕️ camp to stock up!`,onSolve:()=>{ carrying.wood+=q.answer; chopFX(tree); updateCarry(); }})); }
 function depositCarry(){ const w=carrying.wood,fo=carrying.food,wa=carrying.water; if(w+fo+wa<=0) return false; if(w)addResource('wood',w); if(fo){addResource('food',fo); collected.food+=fo;} if(wa){addResource('water',wa); collected.water=+(collected.water+wa).toFixed(2);} carrying.wood=carrying.food=carrying.water=0; updateCarry(); const p=[]; if(w)p.push(w+' 🪵'); if(fo)p.push(fo+' 🍎'); if(wa)p.push((+wa.toFixed(1))+' 💧'); showToast('🎒 Stocked up: '+p.join('  ')+' at camp!',3500); SFX.deposit(); return true; }
@@ -681,6 +682,7 @@ function pickItem(it){
   closeMenu();
   showChallengeModal(Object.assign({},it.challenge,{onSolve:()=>{ spend(it.costs||{}); if(it.build)it.build(); if(it.own)it.own(); SFX.build(); reopenCraft=true; }})); }
 document.getElementById('craft-close').addEventListener('click',closeMenu);
+craftBackdrop.addEventListener('click',e=>{ if(e.target===craftBackdrop) closeMenu(); });
 
 // ---- WORKBENCH menu (tools) ----
 function openWorkbench(){ lastMenuFn=openWorkbench; openMenu({eyebrow:'Workbench',title:'🛠️ Craft Tools',sub:'Costs are in wood — chop a 🌲 tree with your axe, then haul the logs to 🏕️ camp to bank them.',
@@ -780,6 +782,7 @@ function renderJournal(){ journalList.innerHTML='';
 function openJournal(){ hero.walkTarget=null; renderJournal(); journalBackdrop.classList.add('open'); }
 document.getElementById('journal-btn').addEventListener('click',openJournal);
 document.getElementById('journal-close').addEventListener('click',()=>journalBackdrop.classList.remove('open'));
+journalBackdrop.addEventListener('click',e=>{ if(e.target===journalBackdrop) journalBackdrop.classList.remove('open'); });
 
 // ---- SURVIVAL GUIDE: ordered, self-checking how-to-survive book ----
 const GUIDE=[
@@ -801,6 +804,7 @@ function renderGuide(){ guideList.innerHTML=''; let nextFound=false;
 function openGuide(){ hero.walkTarget=null; renderGuide(); guideBackdrop.classList.add('open'); document.getElementById('guide-btn').classList.remove('has-new'); }
 document.getElementById('guide-btn').addEventListener('click',openGuide);
 document.getElementById('guide-close').addEventListener('click',()=>guideBackdrop.classList.remove('open'));
+guideBackdrop.addEventListener('click',e=>{ if(e.target===guideBackdrop) guideBackdrop.classList.remove('open'); });
 
 /* --------------------------- 7) BUILD ------------------------------- */
 function buildFloor(){ const floor=new THREE.Group(); const planks=5,gap=0.08,pw=(SHELTER_D-gap*(planks-1))/planks;
